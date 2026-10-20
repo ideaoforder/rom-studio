@@ -1,0 +1,5 @@
+*.nes
+*.ips
+*.chr
+*.zip
+.DS_Store
