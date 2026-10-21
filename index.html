@@ -178,6 +178,10 @@ details > summary { cursor: pointer; font-size: 12px; color: var(--muted); }
 .opal { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
 .opal-slots { display: flex; flex-direction: column; gap: 6px; }
 .opal-slots .slot { width: 56px; height: 30px; border-radius: var(--r); border: 1px solid var(--line); cursor: pointer; display: flex; align-items: flex-end; justify-content: flex-end; padding: 2px 4px; font-family: var(--f-mono); font-size: 10px; color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000; }
+.rescue { max-width: min(560px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: inherit; padding: 16px; }
+.rescue::backdrop { background: rgba(0,0,0,.45); }
+.rescue textarea { width: 100%; box-sizing: border-box; font: 11px var(--f-mono); margin: 8px 0; }
+.rescue #rescueErr { color: #b3261e; word-break: break-word; }
 .opal-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
 .opal-row .label { flex-basis: 100%; margin-top: 4px; }
 .opal-slots .slot.locked { cursor: not-allowed; opacity: .75; font-size: 13px; }
@@ -289,6 +293,13 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line)
       <button class="btn primary" id="btnSave" type="button">Download project .zip</button>
     </div>
     <input type="file" id="fRom" accept=".nes" hidden>
+    <dialog id="rescueDlg" class="rescue" aria-labelledby="rescueH">
+      <h2 id="rescueH">The project zip couldn't be built</h2>
+      <p class="mono" id="rescueErr"></p>
+      <p>Your work is safe. Save this backup (or copy the text and paste it into a note). <b>Open project…</b> accepts the backup file and restores everything.</p>
+      <textarea id="rescueText" readonly rows="5" aria-label="Backup of your project as text"></textarea>
+      <div class="tools"><button class="btn primary" type="button" id="rescueSave">Save backup .json</button><button class="btn" type="button" id="rescueCopy">Copy text</button><span class="spacer"></span><button class="btn" type="button" id="rescueClose">Close</button></div>
+    </dialog>
     <input type="file" id="fSkin1" accept="image/png" hidden>
     <input type="file" id="fSkin2" accept="image/png" hidden>
     <input type="file" id="fProj" accept=".zip,.png,.json,.yml,.yaml,.nes" multiple hidden>
@@ -1157,9 +1168,9 @@ async function partsPng() {
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) set(x, y, GUTTER);
   for (const [name, [x, y, pw, ph]] of Object.entries(rects)) for (let yy = 0; yy < ph; yy++) for (let xx = 0; xx < pw; xx++) set(x + xx, y + yy, colors[S.parts[name][yy][xx]]);
   ctx.putImageData(im, 0, 0);
-  const blob = await new Promise(r => c.toBlob(r, "image/png"));
+  const png = await canvasPng(c, im);
   const json = { colors: colors.map(c => "#" + c.map(hex2).join("")), note: "index 0 = transparent, 1-3 = sprite colors, dark gray = gutter. Don't edit this file.", size: [w, h], parts: rects };
-  return [new Uint8Array(await blob.arrayBuffer()), JSON.stringify(json, null, 2) + "\n"];
+  return [png, JSON.stringify(json, null, 2) + "\n"];
 }
 async function readPartsPng(pngBytes, json) {
   const key = JSON.parse(json);
@@ -1180,6 +1191,33 @@ async function readPartsPng(pngBytes, json) {
 // ======================================================================= zip
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 const crc32 = b => { let c = 0xFFFFFFFF; for (const x of b) c = CRC[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; };
+// PNG bytes for a canvas. Some browsers/views hand back null from toBlob; then encode the pixels ourselves.
+async function canvasPng(c, im) {
+  try { const blob = await new Promise(r => c.toBlob(r, "image/png")); if (blob) return new Uint8Array(await blob.arrayBuffer()); } catch (e) { /* fall through */ }
+  return encodePng(im.data, im.width, im.height);
+}
+function encodePng(rgba, w, h) { // RGBA, filter 0, zlib stored blocks; no spreads (sheets are large)
+  const stride = w * 4 + 1, raw = new Uint8Array(h * stride);
+  for (let y = 0; y < h; y++) raw.set(rgba.subarray(y * w * 4, (y + 1) * w * 4), y * stride + 1);
+  const nBlocks = Math.max(1, Math.ceil(raw.length / 65535)), z = new Uint8Array(2 + raw.length + nBlocks * 5 + 4);
+  let a = 1, b2 = 0, o = 0;
+  for (let i = 0; i < raw.length; i++) { a = (a + raw[i]) % 65521; b2 = (b2 + a) % 65521; }
+  z[o++] = 0x78; z[o++] = 0x01;
+  for (let k = 0; k < nBlocks; k++) {
+    const i = k * 65535, n = Math.min(65535, raw.length - i);
+    z[o++] = k === nBlocks - 1 ? 1 : 0; z[o++] = n & 255; z[o++] = n >> 8; z[o++] = ~n & 255; z[o++] = (~n >> 8) & 255;
+    z.set(raw.subarray(i, i + n), o); o += n;
+  }
+  z[o++] = (b2 >>> 8) & 255; z[o++] = b2 & 255; z[o++] = (a >>> 8) & 255; z[o++] = a & 255;
+  const chunks = [["IHDR", new Uint8Array([w >>> 24, (w >>> 16) & 255, (w >>> 8) & 255, w & 255, h >>> 24, (h >>> 16) & 255, (h >>> 8) & 255, h & 255, 8, 6, 0, 0, 0])], ["IDAT", z], ["IEND", new Uint8Array(0)]];
+  const out = new Uint8Array(8 + chunks.reduce((n, [, d]) => n + d.length + 12, 0)); out.set([137, 80, 78, 71, 13, 10, 26, 10]);
+  let p = 8; const be = n => { out[p++] = n >>> 24; out[p++] = (n >>> 16) & 255; out[p++] = (n >>> 8) & 255; out[p++] = n & 255; };
+  for (const [type, d] of chunks) {
+    be(d.length); const start = p; for (let i = 0; i < 4; i++) out[p++] = type.charCodeAt(i);
+    out.set(d, p); p += d.length; be(crc32(out.subarray(start, p)));
+  }
+  return out;
+}
 function zip(entries) { // [{name, data: Uint8Array}] stored, no compression
   const enc = new TextEncoder(), parts = [], central = []; let off = 0;
   const u16 = n => [n & 255, (n >> 8) & 255], u32 = n => [n & 255, (n >> 8) & 255, (n >> 16) & 255, (n >>> 24) & 255];
@@ -1227,39 +1265,45 @@ if (window.claude && typeof window.claude.use === "function") {
 async function saveFile(filename, blob) {
   if (dl && dl !== "pending") {
     try { await dl.save({ filename, data: blob }); toast(`Saved ${filename}`); }
-    catch (e) { if (e && e.code !== "declined") toast(e.code === "rate_limited" ? "A save prompt is already open." : `Couldn't save: ${e.message || e.code}`); }
+    catch (e) { if (e && e.code !== "declined") { if (e.code === "rate_limited") toast("A save prompt is already open."); else if (!/backup/.test(filename)) rescue(new Error(`Couldn't save: ${e.message || e.code}`)); else toast(`Couldn't save: ${e.message || e.code}. Use Copy text instead.`); } }
     return;
   }
-  if (dl === "pending" || dl === null) { toast("Downloads aren't available in this view."); return; }
+  if (dl === "pending" || dl === null) { if (/backup/.test(filename)) toast("Downloads aren't available in this view. Use Copy text instead."); else rescue(new Error("Downloads aren't available in this view.")); return; }
   const url = URL.createObjectURL(blob), a = el("a", { href: url, download: filename });
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
 async function downloadProject() {
+  if (!S.profile) loadProfile(SMB_PROFILE);
+  const failed = [], tryPart = async (what, fn) => { try { return await fn(); } catch (e) { console.error(what, e); failed.push(`${what}: ${e.message || e}`); return null; } };
   const enc = new TextEncoder(), smb = S.profile.player === "smb";
   const config = { input: "game.nes", output: "game_hacked.nes", ips: "game_hacked.ips", profile: "profile.json" };
   if (smb) Object.assign(config, { input: "smb.nes", output: "smb_hacked.nes", ips: "smb_hacked.ips", rig: "rig.yml", frames: "frames.png", palettes: S.palettes, names: S.names });
   const entries = [];
-  if (smb) {
-    const [png, pjson] = await partsPng();
-    entries.push({ name: "parts.png", data: png }, { name: "parts.json", data: enc.encode(pjson) }, { name: "rig.yml", data: enc.encode(emitRig(S.rig)) });
-  }
-  const objs = await objectsPng();
+  if (smb) await tryPart("player art", async () => {
+    const [png, pjson] = await partsPng(), rig = emitRig(S.rig);
+    entries.push({ name: "parts.png", data: png }, { name: "parts.json", data: enc.encode(pjson) }, { name: "rig.yml", data: enc.encode(rig) });
+  });
+  const objs = await tryPart("enemies & blocks", () => objectsPng());
   if (objs) { config.objects = "objects.png"; entries.push({ name: "objects.png", data: objs[0] }, { name: "objects.json", data: enc.encode(objs[1]) }); }
-  config.sprite_palettes = spritePalConfig();
-  if (smb && Object.keys(S.sfxEdits).length) config.byte_patches = sfxPatchConfig();
-  if (smb && S.musicEdited) {
+  config.sprite_palettes = (await tryPart("palettes", () => spritePalConfig())) || {};
+  if (smb && Object.keys(S.sfxEdits).length) config.byte_patches = (await tryPart("sounds", () => sfxPatchConfig())) || undefined;
+  if (smb && S.musicEdited && S.music && S.music.slots) await tryPart("music", () => {
     const mb = musicRegionPatch();
     config.byte_ranges = [{ label: "music", offset: fileOf(SND.regionStart), hex: Array.from(mb, hex2).join("") }];
     config.music = "music.json";
     entries.push({ name: "music.json", data: enc.encode(JSON.stringify({ format: "smb-music/1", note: "Patterns: tempo row + melody/harmony/bass/drums lanes of {n: note or beat byte, li: length index}. slots map the game's song table to patterns.", ...S.music }, null, 1) + "\n") });
-  }
+  });
   entries.push({ name: "profile.json", data: enc.encode(JSON.stringify(S.profile, null, 1) + "\n") });
   entries.push({ name: "config.json", data: enc.encode(JSON.stringify(config, null, 2) + "\n") });
-  if (S.rom) {
+  if (S.rom && !failed.length) await tryPart("patched game", () => {
     const built = buildRom();
     entries.push({ name: config.input, data: S.rom }, { name: config.output, data: built }, { name: config.ips, data: ips(S.rom, built) });
+  });
+  if (failed.length) { // never lose work: ship what we have plus a full backup, and say what's missing
+    entries.push({ name: "backup.json", data: enc.encode(backupJson()) });
   }
   await saveFile(smb ? "smb_skin_project.zip" : "sprite_project.zip", zip(entries));
+  if (failed.length) toast(`Saved, with a backup.json inside. Couldn't build: ${failed.join("; ")}`);
 }
 
 // ======================================================================= history + persistence
@@ -1276,6 +1320,10 @@ function restore(json) {
   const o = JSON.parse(json);
   Object.assign(S, { rig: o.rig, parts: o.parts, palettes: o.palettes, names: o.names, chrEdits: o.chrEdits || {}, spritePals: o.spritePals || S.spritePals, spritePalsEdited: !!o.spritePalsEdited, palEdited: o.palEdited || (o.spritePalsEdited ? Object.fromEntries(Object.keys(o.spritePals || {}).map(k => [k, true])) : {}), sfxEdits: o.sfxEdits || {}, musicEdited: !!o.musicEdited, music: o.musicEdited ? o.music : (MU.orig ? JSON.parse(JSON.stringify(MU.orig)) : null) });
   fullRefresh();
+}
+function restoreBackup(j) {
+  restore(JSON.stringify(j.state)); persist();
+  toast("Backup restored." + (S.rom ? "" : " Open your ROM to see the original art and download the game."));
 }
 function undo() { if (!undoStack.length) return; redoStack.push(snap()); restore(undoStack.pop()); lastCk.key = ""; }
 function redo() { if (!redoStack.length) return; undoStack.push(snap()); restore(redoStack.pop()); lastCk.key = ""; }
@@ -1726,6 +1774,11 @@ async function openProjectFiles(files) {
   }
   const dec = new TextDecoder();
   checkpoint("");
+  for (const [n, buf] of Object.entries(bag)) if (/\.json$/i.test(n)) {
+    let j = null; try { j = JSON.parse(dec.decode(buf)); } catch (e) { continue; }
+    if (j && j.format === "smb-skin-backup/1" && j.state) { restoreBackup(j); return; }
+    if (j && j.rig && j.parts && j.palettes) { restoreBackup({ state: j }); return; } // raw autosave text, e.g. copy(snap()) from the console
+  }
   let did = [];
   const cfg = bag["config.json"] ? JSON.parse(dec.decode(bag["config.json"])) : null;
   const profName = Object.keys(bag).find(n => /profile\.json$/i.test(n));
@@ -1805,7 +1858,17 @@ for (const n of [1, 2]) $("#fSkin" + n).onchange = async e => {
   try { const img = await readImage(f); if (!isSkin(img)) { toast(`Skins are 64×64 (or 64×32) PNGs; this one is ${img.w}×${img.h}.`); return; } useSkin(n, img); }
   catch (err) { toast("Couldn't read that image."); }
 };
-$("#btnSave").onclick = () => downloadProject().catch(e => toast(e.message || String(e)));
+$("#btnSave").onclick = () => downloadProject().catch(e => { console.error(e); rescue(e); });
+function backupJson() { return JSON.stringify({ format: "smb-skin-backup/1", game: (S.profile || {}).game, saved: new Date().toISOString(), state: JSON.parse(snap()) }); }
+function rescue(err) {
+  const d = $("#rescueDlg"), where = ((err && err.stack) || "").split("\n").find(l => /at |@/.test(l)) || "";
+  $("#rescueErr").textContent = `${(err && err.message) || err}${where ? "  (" + where.trim().replace(/\(?(blob|https?|file):[^)]*/g, "").trim() + ")" : ""}`;
+  $("#rescueText").value = backupJson();
+  if (d.showModal) d.showModal(); else d.setAttribute("open", "");
+}
+$("#rescueSave").onclick = () => saveFile("smb_skin_backup.json", new Blob([backupJson()], { type: "application/json" }));
+$("#rescueCopy").onclick = async () => { const t = $("#rescueText"); t.select(); try { await navigator.clipboard.writeText(t.value); toast("Copied. Paste it into a note or message to keep it."); } catch (e) { document.execCommand && document.execCommand("copy"); toast("Selected. Use Copy from the menu if it didn't copy."); } };
+$("#rescueClose").onclick = () => { const d = $("#rescueDlg"); d.close ? d.close() : d.removeAttribute("open"); };
 $("#btnUndo").onclick = undo; $("#btnRedo").onclick = redo;
 let dragDepth = 0;
 addEventListener("dragenter", e => { if ([...e.dataTransfer.types].includes("Files")) { dragDepth++; $("#drop").hidden = false; } });
@@ -2957,9 +3020,9 @@ async function objectsPngHome() {
       slots: known.map(s => s ? [s.off, (s.h ? "h" : "") + (s.v ? "v" : "")] : null) });
   }
   ctx.putImageData(im, 0, 0);
-  const blob = await new Promise(r => c.toBlob(r, "image/png"));
+  const png = await canvasPng(c, im);
   const json = { note: "Each frame lists, per 8x8 slot, the CHR file offset and flips the game draws it with. null = not part of the sheet.", size: [W, H], frames };
-  return [new Uint8Array(await blob.arrayBuffer()), JSON.stringify(json, null, 1) + "\n"];
+  return [png, JSON.stringify(json, null, 1) + "\n"];
 }
 async function readObjectsPng(pngBytes, json) {
   const key = JSON.parse(json), img = await readImage(new Blob([pngBytes]));
@@ -3770,7 +3833,7 @@ function bootSample() {
       restored = true;
     }
   } catch (e) { restored = false; }
-  if (!restored) bootSample();
+  if (!restored) try { bootSample(); } catch (e) { console.error("sample", e); }
   loadProfile(SMB_PROFILE);
   buildFrames(); fullRefresh(); renderSeg();
   requestAnimationFrame(loop);

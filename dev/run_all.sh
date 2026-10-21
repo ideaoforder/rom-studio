@@ -1,0 +1,9 @@
+#!/bin/sh
+# Runs every browser + engine check. Needs SMB_ROM set (see HANDOFF.md).
+cd "$(dirname "$0")" || exit 1
+: "${SMB_ROM:?Set SMB_ROM to your Super Mario Bros. (World) .nes}"
+status=0
+for t in test_bench test_objects test_powerups test_blocks test_sounds test_scope test_music test_ipad; do
+  echo "== $t"; python3 "$t.py" || status=1
+done
+exit $status

@@ -3,3 +3,7 @@
 *.chr
 *.zip
 .DS_Store
+dev/node_modules/
+dev/*_test/
+dev/ipad.png
+__pycache__/

@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "description": "Dev/test helpers for rom-studio",
+  "dependencies": { "js-yaml": "4.1.0" }
+}
