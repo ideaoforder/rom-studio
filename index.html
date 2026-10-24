@@ -10,7 +10,7 @@
 <style>html{-webkit-text-size-adjust:100%}:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
-<title>SMB Skin Bench</title>
+<title>ROM Studio</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Silkscreen&display=swap">
@@ -279,7 +279,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line)
   <header class="bar">
     <div class="brand">
       <span class="led" aria-hidden="true"></span>
-      <h1>SMB Skin Bench</h1>
+      <h1>ROM Studio</h1>
       <small>NES sprite workshop</small>
     </div>
     <div class="actions">
@@ -680,6 +680,10 @@ const SMB_PROFILE = {
 // Background palettes: bg0-bg2 per area, bg3 (whose first color the game cycles through "shimmer"), and the sky color.
 Object.assign(SMB_PROFILE.palettes, {"water.bg0": {"offset": 3256}, "water.bg1": {"offset": 3260}, "water.bg2": {"offset": 3264}, "water.bg3": {"offset": 2530, "rotate": "shimmer"}, "water.sky": {"offset": 1503, "count": 1}, "ground.bg0": {"offset": 3292}, "ground.bg1": {"offset": 3296}, "ground.bg2": {"offset": 3300}, "ground.bg3": {"offset": 2534, "rotate": "shimmer"}, "ground.sky": {"offset": 1504, "count": 1}, "underground.bg0": {"offset": 3328}, "underground.bg1": {"offset": 3332}, "underground.bg2": {"offset": 3336}, "underground.bg3": {"offset": 2538, "rotate": "shimmer"}, "underground.sky": {"offset": 1505, "count": 1}, "castle.bg0": {"offset": 3364}, "castle.bg1": {"offset": 3368}, "castle.bg2": {"offset": 3372}, "castle.bg3": {"offset": 2542, "rotate": "shimmer"}, "castle.sky": {"offset": 1506, "count": 1}, "shimmer": {"offset": 2515, "count": 6}});
 
+// Mega Man 3 (USA): frames read from the game's sprite tables (anim $1A/$1B, offsets $19/$14), checked against
+// the running game's OAM. Mega Man's tiles also live in per-weapon CHR copies (chr_links), which follow your edits.
+const MM3_PROFILE = {"format":"nes-sprite-profile/1","game":"Mega Man 3 (USA)","objects_label":"Sprites","rom":{"size":393232,"chr_offset":262160,"check":[[0,"4E45531A1010"],[18001,"0F2C110F0F30210F"]]},"areas":{"stage":{"label":"Stage","sky":"0F"}},"chr_links":[{"banks":[1,2,3,4,6,7],"tiles":[0,64]},{"banks":[8,10,12,15,17,19,21,29,32,36,38,39,42,44,46,50,60],"tiles":[0,32]}],"palettes":{"body.0":{"offset":18001,"mirror":[247977],"label":"Body \u00b7 Mega Buster"},"body.1":{"offset":18005,"label":"Body \u00b7 Weapon 1"},"body.2":{"offset":18009,"label":"Body \u00b7 Weapon 2"},"body.3":{"offset":18013,"label":"Body \u00b7 Weapon 3"},"body.4":{"offset":18017,"label":"Body \u00b7 Weapon 4"},"body.5":{"offset":18021,"label":"Body \u00b7 Weapon 5"},"body.6":{"offset":18025,"label":"Body \u00b7 Weapon 6"},"body.7":{"offset":18029,"label":"Body \u00b7 Weapon 7"},"body.8":{"offset":18033,"label":"Body \u00b7 Weapon 8"},"body.9":{"offset":18037,"label":"Body \u00b7 Weapon 9"},"body.10":{"offset":18041,"label":"Body \u00b7 Weapon 10"},"body.11":{"offset":18045,"label":"Body \u00b7 Weapon 11"},"face":{"offset":247981,"label":"Face"}},"objects":[{"name":"Mega Man","palette":["body.0","body.1","body.2","body.3","body.4","body.5","body.6","body.7","body.8","body.9","body.10","body.11"],"variant_labels":["Mega Buster","Weapon 1","Weapon 2","Weapon 3","Weapon 4","Weapon 5","Weapon 6","Weapon 7","Weapon 8","Weapon 9","Weapon 10","Weapon 11"],"home":"stage","chr_banks":[0,1,10,0],"note":"Mega Man's art also exists in the copies the game swaps in per weapon; your edits are copied to matching tiles there.","frames":{"stand":{"sprites":[["00",-5,-6,"face"],["07",-8,-12,null],["08",0,-12,null],["19",-12,-4,null],["1A",-4,-4,null],["1B",4,-4,null],["29",-12,4,null],["2A",-4,4,null],["2B",4,4,null]]},"blink":{"sprites":[["20",-5,-6,"face"],["07",-8,-12,null],["08",0,-12,null],["19",-12,-4,null],["1A",-4,-4,null],["1B",4,-4,null],["29",-12,4,null],["2A",-4,4,null],["2B",4,4,null]]},"shoot":{"sprites":[["00",-9,-6,"face"],["07",-12,-12,null],["0D",-4,-12,null],["43",-12,-4,null],["44",-4,-4,null],["53",-12,4,null],["54",-4,4,null],["55",4,4,null],["45",4,-5,null],["0F",-20,-5,null]]},"throw":{"sprites":[["00",-9,-6,"face"],["07",-12,-12,null],["0D",-4,-12,null],["92",-20,-4,null],["90",-12,-4,null],["44",-4,-4,null],["93",-20,4,null],["91",-12,4,null],["54",-4,4,null],["55",4,4,null],["45",4,-5,null]]},"walk 1":{"sprites":[["00",-9,-4,"face"],["01",-12,-12,null],["02",-4,-12,null],["11",-12,-4,null],["12",-4,-4,null],["13",4,-4,null],["21",-12,4,null],["22",-4,4,null],["23",4,4,null],["10",-20,-4,null]]},"walk 2":{"sprites":[["00",-9,-6,"face"],["07",-12,-12,null],["08",-4,-12,null],["17",-12,-4,null],["18",-4,-4,null],["06",4,-4,null],["27",-12,4,null],["28",-4,4,null]]},"walk 3":{"sprites":[["00",-9,-4,"face"],["01",-12,-12,null],["05",-4,-12,null],["14",-12,-4,null],["15",-4,-4,null],["16",4,-4,null],["24",-12,4,null],["25",-4,4,null],["26",4,4,null]]},"walk shoot 1":{"sprites":[["00",-9,-4,"face"],["01",-12,-12,null],["02",-4,-12,null],["4A",-12,-4,null],["12",-4,-4,null],["13",4,-4,null],["4B",-12,4,null],["22",-4,4,null],["23",4,4,null],["0F",-20,-4,null]]},"walk shoot 2":{"sprites":[["00",-9,-6,"face"],["07",-12,-12,null],["08",-4,-12,null],["59",-12,-4,null],["18",-4,-4,null],["06",4,-4,null],["27",-12,4,null],["28",-4,4,null],["0F",-20,-6,null]]},"walk shoot 3":{"sprites":[["00",-9,-4,"face"],["01",-12,-12,null],["05",-4,-12,null],["3A",-12,-4,null],["3B",-4,-4,null],["6F",4,-4,null],["24",-12,4,null],["25",-4,4,null],["4D",4,4,null],["0F",-20,-4,null]]},"step":{"sprites":[["00",-5,-6,"face"],["07",-8,-12,null],["08",0,-12,null],["19",-12,-4,null],["1A",-4,-4,null],["1B",4,-4,null],["03",-12,4,null],["04",-4,4,null],["2B",4,4,null]]},"jump":{"sprites":[["31",-8,-12,null],["32",0,-12,null],["41",-8,-4,null],["42",0,-4,null],["50",-16,4,null],["51",-8,4,null],["52",0,4,null],["40",-1,12,null],["30",-16,-11,null],["30h",8,-11,null],["2F",-5,-6,"face"]]},"jump shoot":{"sprites":[["2F",-5,-6,"face"],["07",-8,-12,null],["32",0,-12,null],["8C",-8,-4,null],["42",0,-4,null],["50",-16,4,null],["51",-8,4,null],["52",0,4,null],["30h",8,-11,null],["40",-1,12,null],["0F",-16,-6,null]]},"jump throw":{"sprites":[["2F",-5,-6,"face"],["07",-8,-12,null],["32",0,-12,null],["8C",-8,-4,null],["42",0,-4,null],["50",-16,4,null],["51",-8,4,null],["52",0,4,null],["30h",8,-11,null],["40",-1,12,null],["84",-16,-6,null]]},"climb 1":{"sprites":[["3E",-8,-12,null],["3F",0,-12,null],["4E",-8,-4,null],["4F",0,-4,null],["5E",-8,4,null],["5F",0,4,null],["5D",0,12,null]]},"climb 2":{"sprites":[["4Fh",-8,-4,null],["4Eh",0,-4,null],["5Fh",-8,4,null],["5Eh",0,4,null],["5Dh",-8,12,null],["3Fh",-8,-12,null],["3Eh",0,-12,null]]},"climb shoot":{"sprites":[["9D",-8,-4,null],["9E",0,-4,null],["8F",-8,4,null],["5Eh",0,4,null],["5Dh",-8,12,null],["8D",-8,-12,null],["8E",0,-12,null],["9C",-5,-6,"face"],["0F",-16,-5,null]]},"climb throw":{"sprites":[["9D",-8,-4,null],["9E",0,-4,null],["8F",-8,4,null],["5Eh",0,4,null],["5Dh",-8,12,null],["8D",-8,-12,null],["8E",0,-12,null],["9C",-5,-6,"face"],["9F",-16,-5,null]]},"climb top":{"sprites":[["80",-8,-4,null],["80h",0,-4,null],["81",-8,4,null],["82",0,4,null],["83",-8,12,null]]},"slide":{"sprites":[["2F",-2,-3,"face"],["3C",-8,-12,null],["3D",0,-12,null],["09",-16,-4,null],["0A",-8,-4,null],["0B",0,-4,null],["1F",8,-4,null],["38",-16,4,null],["47",-8,4,null],["57",0,4,null],["5C",8,4,null]]},"hurt":{"sprites":[["2E",-5,-6,"face"],["0C",-8,-12,null],["0D",0,-12,null],["1C",-8,-4,null],["1D",0,-4,null],["50",-16,4,null],["2C",-8,4,null],["2D",0,4,null],["1Eh",-16,-5,null],["1E",8,-5,null],["0E",-2,12,null]]},"hurt flash":{"sprites":[["9B",-4,-4,"face"],["99",-12,4,"face"],["9Av",-4,4,"face"],["99h",4,4,"face"],["97",-12,-12,"face"],["9A",-4,-12,"face"],["97h",4,-12,"face"],["98",-12,-4,"face"],["98h",4,-4,"face"]]},"teleport beam":{"sprites":[["33",-4,-12,null],["33",-4,-4,null],["33",-4,4,null],["33",-4,-20,null]]},"teleport 2":{"sprites":[["36",-4,-4,null],["34",-12,4,null],["37",-4,4,null],["34h",4,4,null],["35",-12,-12,null],["36",-4,-12,null],["35h",4,-12,null],["35",-12,-4,null],["35h",4,-4,null],["36",-4,-20,null]]},"teleport 3":{"sprites":[["36",-4,-4,null],["34",-12,4,null],["37",-4,4,null],["34h",4,4,null]]}},"clips":{"stand":[["stand",90],["blink",9]],"shoot":[["shoot",9]],"throw":[["throw",9]],"walk":[["walk 1",7],["walk 2",7],["walk 3",7],["walk 2",7]],"walk + shoot":[["walk shoot 1",7],["walk shoot 2",7],["walk shoot 3",7],["walk shoot 2",7]],"step":[["step",12]],"jump":[["jump",9]],"jump + shoot":[["jump shoot",9]],"jump + throw":[["jump throw",9]],"climb":[["climb 1",9],["climb 2",9]],"climb + shoot":[["climb shoot",9]],"climb + throw":[["climb throw",9]],"climb top":[["climb top",9]],"slide":[["slide",9]],"hurt":[["hurt",3],["hurt flash",3],["hurt",3],["hurt flash",3],["hurt",3],["hurt flash",3],["hurt",3],["hurt flash",3],["hurt",3],["hurt flash",3]],"teleport":[["teleport beam",3],["teleport 2",3],["teleport beam",3],["teleport 3",6]]}}]};
+const BUILTIN_PROFILES = [SMB_PROFILE, MM3_PROFILE];
 const RIG_HEADER = `# rig.yml — how the body-part templates in parts.png become game frames.
 #
 # parts:     what gets drawn. size [w, h] in pixels; pivot = the joint the
@@ -822,8 +826,8 @@ function encodeTile(px, b, off) {
   }
 }
 const eqArr = (a, b) => a.length === b.length && a.every((v, i) => v === b[i]);
-function validateRom(b) {
-  const P = S.profile;
+function validateRom(b) { return validateRomFor(S.profile, b); }
+function validateRomFor(P, b) {
   if (P && P.player !== "smb") {
     if (!eqArr(Array.from(b.slice(0, 4)), [0x4E, 0x45, 0x53, 0x1A])) return "That isn't an NES ROM (no iNES header).";
     if (P.rom.size && b.length !== P.rom.size) return `This profile expects a ${P.rom.size.toLocaleString()}-byte ROM; this one is ${b.length.toLocaleString()} bytes.`;
@@ -854,15 +858,37 @@ function decodeText(bytes) {
 }
 function romTile(n) { return S.rom ? decodeTile(S.rom, CHR_OFFSET + n * 16) : null; }
 
+let LINKS = null; // tile offset -> other offsets holding an identical copy the game swaps in (profile chr_links)
+function chrLinks() {
+  if (LINKS) return LINKS;
+  const map = new Map(); if (!S.rom || !S.profile || !S.profile.chr_links) return map;
+  const C = S.profile.rom.chr_offset, used = new Set();
+  for (const o of S.objs) for (const f of Object.values(o.frames)) for (const q of f.slots) if (q) used.add(q.off);
+  const same = (a, b) => { for (let i = 0; i < 16; i++) if (S.rom[a + i] !== S.rom[b + i]) return false; return true; };
+  for (const g of S.profile.chr_links) {
+    const [t0, t1] = g.tiles || [0, 64];
+    for (const b of g.banks) for (let t = t0; t < t1; t++) {
+      const off = C + b * 1024 + t * 16; if (!used.has(off)) continue;
+      const mir = g.banks.filter(b2 => b2 !== b).map(b2 => C + b2 * 1024 + t * 16).filter(m => same(m, off));
+      if (mir.length) map.set(off, mir);
+    }
+  }
+  return (LINKS = map);
+}
+function chrEditsWithLinks() { // mirrors follow their source tile
+  const out = { ...S.chrEdits };
+  for (const [src, mir] of chrLinks()) if (S.chrEdits[src]) for (const m of mir) out[m] = S.chrEdits[src];
+  return out;
+}
 function buildRom() {
   const out = S.rom.slice();
   if (S.profile.player === "smb") buildPlayerInto(out);
-  for (const [off, px] of Object.entries(S.chrEdits)) encodeTile(px, out, Number(off));
+  for (const [off, px] of Object.entries(chrEditsWithLinks())) encodeTile(px, out, Number(off));
   if (S.profile.player === "smb") for (const [off, v] of Object.entries(S.sfxEdits)) out[Number(off)] = v;
   if (S.profile.player === "smb") { const mb = musicRegionPatch(); if (mb) out.set(mb, fileOf(SND.regionStart)); }
   for (const [id, cols] of Object.entries(S.spritePals)) {
     const meta = S.profile.palettes[id];
-    if (meta) cols.forEach((h, i) => { out[meta.offset + i] = parseInt(h, 16) & 0x3F; });
+    if (meta) for (const at of [meta.offset, ...(meta.mirror || [])]) cols.forEach((h, i) => { out[at + i] = parseInt(h, 16) & 0x3F; });
   }
   return out;
 }
@@ -1314,7 +1340,7 @@ async function downloadProject() {
 // ======================================================================= history + persistence
 const undoStack = [], redoStack = [];
 let lastCk = { key: "", t: 0 };
-const snap = () => JSON.stringify({ rig: S.rig, parts: S.parts, palettes: S.palettes, names: S.names, chrEdits: S.chrEdits, spritePals: S.spritePals, spritePalsEdited: S.spritePalsEdited, palEdited: S.palEdited, sfxEdits: S.sfxEdits, music: S.musicEdited ? S.music : null, musicEdited: S.musicEdited });
+const snap = () => JSON.stringify({ game: S.profile ? S.profile.game : undefined, rig: S.rig, parts: S.parts, palettes: S.palettes, names: S.names, chrEdits: S.chrEdits, spritePals: S.spritePals, spritePalsEdited: S.spritePalsEdited, palEdited: S.palEdited, sfxEdits: S.sfxEdits, music: S.musicEdited ? S.music : null, musicEdited: S.musicEdited });
 function checkpoint(key) {
   const now = performance.now();
   if (key && key === lastCk.key && now - lastCk.t < 1200) { lastCk.t = now; return; }
@@ -1327,6 +1353,8 @@ function restore(json) {
   fullRefresh();
 }
 function restoreBackup(j) {
+  const p = BUILTIN_PROFILES.find(q => q.game === j.state.game);
+  if (p && p !== S.profile) { switchGame(p); }
   restore(JSON.stringify(j.state)); persist();
   toast("Backup restored." + (S.rom ? "" : " Open your ROM to see the original art and download the game."));
 }
@@ -1752,10 +1780,27 @@ stage.addEventListener("blur", () => keys.clear());
 stage.addEventListener("click", () => stage.focus());
 
 // ======================================================================= file IO
+let pendingSwitch = null;
+function hasGameEdits() { return Object.keys(S.chrEdits).length || Object.keys(S.palEdited).length || Object.keys(S.sfxEdits).length || S.musicEdited; }
+function switchGame(p) {
+  checkpoint("");
+  Object.assign(S, { chrEdits: {}, palEdited: {}, spritePalsEdited: false, sfxEdits: {}, music: null, musicEdited: false, rom: null });
+  S.ov = { ...S.ov, sel: 0, area: null, variant: 0, clip: null, slot: 0, slotId: null };
+  loadProfile(p);
+}
 function setRom(bytes, name) {
-  const err = validateRom(bytes);
+  let err = validateRom(bytes);
+  if (err) {
+    const alt = BUILTIN_PROFILES.find(p => p !== S.profile && !validateRomFor(p, bytes));
+    if (alt && hasGameEdits() && pendingSwitch !== alt) {
+      pendingSwitch = alt;
+      toast(`That's ${alt.game}. Download your ${S.profile.game} project first, then open the ROM again to switch (unsaved edits would be cleared).`);
+      return false;
+    }
+    if (alt) { pendingSwitch = null; switchGame(alt); err = null; toast(`Switched to ${alt.game}.`); }
+  }
   if (err) { toast(err); return false; }
-  S.rom = bytes; S.romName = name;
+  S.rom = bytes; S.romName = name; LINKS = null;
   if (S.profile.player === "smb") setFrames(bytes.slice(GFX_TABLE, GFX_TABLE + 0xD0), Array.from(bytes.slice(SWIM_KICK, SWIM_KICK + 2)));
   for (const [id, m] of Object.entries(S.profile.palettes || {})) if (!S.palEdited[id]) S.spritePals[id] = Array.from(bytes.slice(m.offset, m.offset + (m.count || 3)), hex2);
   for (const off of Object.keys(S.chrEdits)) if (JSON.stringify(decodeTile(bytes, Number(off))) === JSON.stringify(S.chrEdits[off])) delete S.chrEdits[off];
@@ -2634,8 +2679,20 @@ function loadProfile(p) {
   if (!p || !Array.isArray(p.objects) || !p.rom || p.rom.chr_offset == null) throw new Error("That profile is missing rom.chr_offset or objects.");
   const objs = p.objects.map(o => {
     const base = o.chr_offset != null ? o.chr_offset : p.rom.chr_offset;
+    const tileOff = idx => o.chr_banks ? p.rom.chr_offset + o.chr_banks[idx >> 6] * 1024 + (idx & 63) * 16 : base + idx * 16;
     const frames = {};
     for (const [fname, f] of Object.entries(o.frames)) {
+      if (f.sprites) { // free-placed hardware sprites: [tile, dx, dy, palette]; listed first = drawn on top
+        const sp = f.sprites.map(([t, dx, dy, pal]) => {
+          const m = TOK.exec(t); if (!m) throw new Error(`${o.name} / ${fname}: can't read tile "${t}"`);
+          const idx = parseInt(m[1], 16);
+          return { off: tileOff(idx), h: !!m[2], v: !!m[3], idx, x: dx, y: dy, pal: pal == null ? undefined : pal };
+        });
+        const x0 = Math.min(...sp.map(q => q.x)), y0 = Math.min(...sp.map(q => q.y));
+        for (const q of sp) { q.x -= x0; q.y -= y0; }
+        frames[fname] = { free: true, w: Math.max(...sp.map(q => q.x)) + 8, h: Math.max(...sp.map(q => q.y)) + 8, slots: sp, ox: x0, oy: y0 };
+        continue;
+      }
       const toks = f.tiles.trim().split(/\s+/);
       const cols = f.cols || 2;
       if (toks.length % cols) throw new Error(`${o.name} / ${fname}: ${toks.length} tiles don't fill ${cols} columns.`);
@@ -2643,18 +2700,20 @@ function loadProfile(p) {
         if (t === ".") return null;
         const m = TOK.exec(t);
         if (!m) throw new Error(`${o.name} / ${fname}: can't read tile "${t}" (use hex like 7C, 7Ch, 7Cv, 7Chv or .)`);
-        return { off: base + parseInt(m[1], 16) * 16, h: !!m[2], v: !!m[3], idx: parseInt(m[1], 16) };
+        return { off: tileOff(parseInt(m[1], 16)), h: !!m[2], v: !!m[3], idx: parseInt(m[1], 16) };
       });
+      slots.forEach((q, i) => { if (q) { q.x = (i % cols) * 8; q.y = Math.floor(i / cols) * 8; } });
       if (f.palettes) {
         const pt = f.palettes.trim().split(/\s+/);
         if (pt.length !== toks.length) throw new Error(`${o.name} / ${fname}: palettes lists ${pt.length} entries for ${toks.length} tiles.`);
         pt.forEach((p, i) => { if (slots[i] && p !== ".") slots[i].pal = p === "*" ? "*" : Number(p); });
       }
-      frames[fname] = { cols, rows: toks.length / cols, slots };
+      frames[fname] = { cols, rows: toks.length / cols, w: cols * 8, h: toks.length / cols * 8, slots };
     }
     return { name: o.name, category: o.category || "objects", palette: o.palette || [1], labels: o.variant_labels || [], home: o.home, frames, clips: o.clips || {}, note: o.note || "" };
   });
-  S.profile = p; S.objs = objs;
+  S.profile = p; S.objs = objs; LINKS = null;
+  $("#tabObjects").textContent = p.objects_label || "Enemies & items";
   S.ov.sel = Math.min(S.ov.sel, objs.length - 1);
   for (const [id, d] of Object.entries(p.palette_defaults || {})) if (!S.spritePals[id]) S.spritePals[id] = d.slice();
   for (const [id, m] of Object.entries(p.palettes || {})) if (!S.spritePals[id] || S.spritePals[id].length !== (m.count || 3)) S.spritePals[id] = Array(m.count || 3).fill("0F");
@@ -2665,7 +2724,7 @@ function loadProfile(p) {
   for (const id of ["btnSkin1", "btnSkin2"]) $("#" + id).hidden = !hasPlayer;
   if (!hasPlayer) setTab("objects");
 }
-const rigOffsets = () => new Set(Object.keys(S.derived.tiles || {}).map(t => CHR_OFFSET + Number(t) * 16));
+const rigOffsets = () => S.profile.player !== "smb" ? new Set() : new Set(Object.keys(S.derived.tiles || {}).map(t => CHR_OFFSET + Number(t) * 16));
 function tileAt(off) {
   if (S.chrEdits[off]) return S.chrEdits[off];
   if (S.profile.player === "smb" && off >= CHR_OFFSET && off < CHR_OFFSET + 0x1000) {
@@ -2675,22 +2734,21 @@ function tileAt(off) {
   return S.rom ? decodeTile(S.rom, off) : null;
 }
 function composeFrame(f, flags = "") {
-  const W = f.cols * 8, H = f.rows * 8, g = grid(W, H, -2);
+  const W = f.w, H = f.h, g = grid(W, H, -2);
   g.pr = grid(W, H, null);
   const m = flags.includes("m"), v = flags.includes("v");
-  f.slots.forEach((s, i) => {
-    let c = i % f.cols, r = Math.floor(i / f.cols);
-    if (m) c = f.cols - 1 - c;
-    if (v) r = f.rows - 1 - r;
-    if (!s) return;
+  for (let i = f.slots.length - 1; i >= 0; i--) { // bottom first, so earlier slots end up on top (NES OAM priority)
+    const s = f.slots[i]; if (!s) continue;
+    const x0 = m ? W - 8 - s.x : s.x, y0 = v ? H - 8 - s.y : s.y;
     const px = tileAt(s.off);
     const fh = s.h !== m, fv = s.v !== v;
     for (let y = 0; y < 8; y++) for (let x = 0; x < 8; x++) {
       const val = px ? px[fv ? 7 - y : y][fh ? 7 - x : x] : -1;
-      g[r * 8 + y][c * 8 + x] = val;
-      if (s.pal != null) g.pr[r * 8 + y][c * 8 + x] = s.pal;
+      if (f.free && val === 0 && g[y0 + y][x0 + x] !== -2) continue; // transparent: keep what's underneath
+      g[y0 + y][x0 + x] = val;
+      if (s.pal != null) g.pr[y0 + y][x0 + x] = s.pal;
     }
-  });
+  }
   return g;
 }
 const curObj = () => S.objs[S.ov.sel];
@@ -2711,6 +2769,7 @@ function colorResolver(o, variant, cyc, t) {
   const base = objColors(o, variant, t), cache = {};
   return ref => {
     if (ref == null || (ref === "*" && cyc == null)) return base;
+    if (typeof ref === "string" && ref !== "*") return cache[ref] || (cache[ref] = [null, ...(S.spritePals[ref] || ["0F", "30", "16"]).map(rgbOf)]);
     const n = ref === "*" ? cyc : ref;
     return cache[n] || (cache[n] = paletteN(o, n));
   };
@@ -2746,7 +2805,7 @@ function paintComposite(ctx, g, z, colors, sky, hilite) {
     ctx.fillStyle = v === -1 ? UNKNOWN[((x >> 2) + (y >> 2)) & 1] : v === 0 ? css(sky) : css(cols[v]);
     ctx.fillRect(x * z, y * z, z, z);
   }
-  if (hilite) for (const [cx, cy] of hilite) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.strokeRect(cx * 8 * z + 1, cy * 8 * z + 1, 8 * z - 2, 8 * z - 2); ctx.strokeStyle = "#000"; ctx.lineWidth = 1; ctx.strokeRect(cx * 8 * z + 2.5, cy * 8 * z + 2.5, 8 * z - 5, 8 * z - 5); }
+  if (hilite) for (const [hx, hy] of hilite) { ctx.strokeStyle = "#fff"; ctx.lineWidth = 2; ctx.strokeRect(hx * z + 1, hy * z + 1, 8 * z - 2, 8 * z - 2); ctx.strokeStyle = "#000"; ctx.lineWidth = 1; ctx.strokeRect(hx * z + 2.5, hy * z + 2.5, 8 * z - 5, 8 * z - 5); }
 }
 function renderObjList() {
   const box = $("#olist"); box.replaceChildren();
@@ -2768,11 +2827,11 @@ function selectObj(i) {
 const oFrameEls = [];
 function renderObjFrames() {
   const o = curObj(), box = $("#oframes"); box.replaceChildren(); oFrameEls.length = 0;
-  const maxRows = Math.max(...Object.values(o.frames).map(f => f.rows)), maxCols = Math.max(...Object.values(o.frames).map(f => f.cols));
+  const maxRows = Math.max(...Object.values(o.frames).map(f => f.h)) / 8, maxCols = Math.max(...Object.values(o.frames).map(f => f.w)) / 8;
   const avail = Math.max(240, box.clientWidth - 40), nFrames = Object.keys(o.frames).length;
   const z = Math.max(5, Math.min(18, Math.floor(220 / (maxRows * 8)), Math.floor((avail / Math.min(nFrames, 4) - 14) / (maxCols * 8))));
   for (const [fn, f] of Object.entries(o.frames)) {
-    const c = el("canvas", { width: f.cols * 8 * z, height: f.rows * 8 * z, "aria-label": `${o.name} ${fn}, paintable` });
+    const c = el("canvas", { width: f.w * z, height: f.h * z, "aria-label": `${o.name} ${fn}, paintable` });
     box.append(el("figure", {}, c, el("figcaption", {}, fn)));
     oFrameEls.push({ c, f, fn, z });
     wireObjCanvas(c, f, fn, z);
@@ -2785,14 +2844,20 @@ function drawObjFrames() {
     const ctx = c.getContext("2d");
     ctx.clearRect(0, 0, c.width, c.height);
     const hl = [];
-    if (S.ov.hoverOff != null) f.slots.forEach((s, i) => { if (s && s.off === S.ov.hoverOff) hl.push([i % f.cols, Math.floor(i / f.cols)]); });
+    if (S.ov.hoverOff != null) f.slots.forEach(s => { if (s && s.off === S.ov.hoverOff) hl.push([s.x, s.y]); });
     paintComposite(ctx, composeFrame(f), z, colors, sky, hl);
   }
 }
-function slotAt(f, x, y) {
-  const s = f.slots[(y >> 3) * f.cols + (x >> 3)];
-  if (!s) return null;
-  return { s, lx: s.h ? 7 - (x & 7) : x & 7, ly: s.v ? 7 - (y & 7) : y & 7 };
+function slotAt(f, x, y) { // topmost slot with an opaque pixel here, else the topmost slot covering it
+  let fallback = null;
+  for (const s of f.slots) {
+    if (!s || x < s.x || x >= s.x + 8 || y < s.y || y >= s.y + 8) continue;
+    const hit = { s, lx: s.h ? 7 - (x - s.x) : x - s.x, ly: s.v ? 7 - (y - s.y) : y - s.y };
+    const px = tileAt(s.off);
+    if (!f.free || !px || px[hit.ly][hit.lx]) return hit;
+    if (!fallback) fallback = hit;
+  }
+  return fallback;
 }
 function setObjPixel(f, x, y, val) {
   const hit = slotAt(f, x, y); if (!hit) return false;
@@ -2816,7 +2881,7 @@ function describeTile(off) {
 }
 function wireObjCanvas(c, f, fn, z) {
   let down = false, val = 1;
-  const pos = e => { const r = c.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / r.width * f.cols * 8), Math.floor((e.clientY - r.top) / r.height * f.rows * 8)]; };
+  const pos = e => { const r = c.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / r.width * f.w), Math.floor((e.clientY - r.top) / r.height * f.h)]; };
   c.addEventListener("contextmenu", e => e.preventDefault());
   c.addEventListener("pointerdown", e => {
     const [x, y] = pos(e), hit = slotAt(f, x, y); if (!hit) return;
@@ -2864,7 +2929,9 @@ function palRows(o) {
   const id = objPalId(o), meta = S.profile.palettes[id] || {}, area = objArea(o);
   const areaLabel = (S.profile.areas && S.profile.areas[area] || {}).label || "";
   const p = o.palette[S.ov.variant], bg = typeof p === "string" && /^bg\d$/.test(p);
-  const rows = [{ id, label: bg ? `${areaLabel} background palette ${p.slice(2)}` : `${areaLabel} palette ${typeof p === "number" ? p : id}`, locked: meta.rotate ? [0] : [] }];
+  const rows = [{ id, label: meta.label || (bg ? `${areaLabel} background palette ${p.slice(2)}` : `${areaLabel} palette ${typeof p === "number" ? p : id}`), locked: meta.rotate ? [0] : [] }];
+  const fixed = new Set(); for (const f of Object.values(o.frames)) for (const q of f.slots) if (q && typeof q.pal === "string" && q.pal !== "*") fixed.add(q.pal);
+  for (const fid of fixed) if (S.spritePals[fid]) rows.push({ id: fid, label: (S.profile.palettes[fid] || {}).label || fid, locked: [] });
   if (meta.rotate && S.spritePals[meta.rotate]) rows.push({ id: meta.rotate, label: "Shimmer (cycles into color 1)", locked: [] });
   if (o.category === "blocks" && S.spritePals[`${area}.sky`]) rows.push({ id: `${area}.sky`, label: `${areaLabel} sky`, locked: [] });
   return rows;
@@ -2928,10 +2995,10 @@ function drawBlockStage(o, t) {
   octx.fillStyle = css(areaSky(o)); octx.fillRect(0, 0, 64, 48);
   const frames = Object.values(o.frames), resolve = colorResolver(o, S.ov.variant, null, t);
   // every frame, repeated across the stage as the level would place it
-  const W = Math.max(...frames.map(f => f.cols * 8)), H = frames.reduce((n, f) => n + f.rows * 8, 0);
+  const W = Math.max(...frames.map(f => f.w)), H = frames.reduce((n, f) => n + f.h, 0);
   let y0 = Math.max(0, 48 - H);
   for (const f of frames) {
-    const g = composeFrame(f), w = f.cols * 8, h = f.rows * 8;
+    const g = composeFrame(f), w = f.w, h = f.h;
     for (let ox = 0; ox < 64; ox += w) for (let y = 0; y < h; y++) for (let x = 0; x < w && ox + x < 64; x++) {
       const v = g[y][x]; if (v <= 0) { if (v === -1) { octx.fillStyle = UNKNOWN[((x >> 2) + (y >> 2)) & 1]; octx.fillRect(ox + x, y0 + y, 1, 1); } continue; }
       octx.fillStyle = css(resolve(null)[v]); octx.fillRect(ox + x, y0 + y, 1, 1);
@@ -2944,7 +3011,7 @@ function drawObjStage(t) {
   const o = curObj(); if (!o) return;
   if (o.category === "blocks") return drawBlockStage(o, t);
   const sky = areaSky(o); octx.fillStyle = css(sky); octx.fillRect(0, 0, 64, 48);
-  for (let x = 0; x < 64; x++) for (let y = 40; y < 48; y++) { octx.fillStyle = css(block[(y - 40) % 16][x % 16]); octx.fillRect(x, y, 1, 1); }
+  if (S.profile.player === "smb") for (let x = 0; x < 64; x++) for (let y = 40; y < 48; y++) { octx.fillStyle = css(block[(y - 40) % 16][x % 16]); octx.fillRect(x, y, 1, 1); }
   const clip = o.clips[S.ov.clip];
   let entry = null;
   if (clip && clip.length) {
@@ -3011,8 +3078,15 @@ async function objectsPngHome() {
       const known = f.slots.map(s => s && tileAt(s.off) ? s : null);
       if (!known.some(Boolean)) continue;
       any = true;
+      if (f.free) {
+        const seen = new Set(), strip = [];
+        for (const q of known) if (q) { const k = q.off + (q.h ? "h" : "") + (q.v ? "v" : ""); if (!seen.has(k)) { seen.add(k); strip.push(q); } }
+        cells.push({ o, fn, f, x, y, known: strip, strip: true });
+        x += strip.length * 8 + 4; rowH = Math.max(rowH, 8);
+        continue;
+      }
       cells.push({ o, fn, f, x, y, known });
-      x += f.cols * 8 + 4; rowH = Math.max(rowH, f.rows * 8);
+      x += f.w + 4; rowH = Math.max(rowH, f.h);
     }
     if (any) { width = Math.max(width, x); y += rowH + 4; }
   }
@@ -3022,9 +3096,16 @@ async function objectsPngHome() {
   const set = (px, py, rgb) => { const i = (py * W + px) * 4; im.data[i] = rgb[0]; im.data[i + 1] = rgb[1]; im.data[i + 2] = rgb[2]; im.data[i + 3] = 255; };
   for (let i = 0; i < W * H; i++) set(i % W, Math.floor(i / W), GUTTER);
   const frames = [];
-  for (const { o, fn, f, x, y: cy, known } of cells) {
+  for (const { o, fn, f, x, y: cy, known, strip } of cells) {
     let colors = [areaSkyFor(o), ...objColors(o, 0).slice(1)];
     if (new Set(colors.map(c => c.join())).size < 4) colors = [rgbOf("22"), ...["0F", "16", "30"].map(rgbOf)];
+    if (strip) {
+      known.forEach((q, k) => { const px = tileAt(q.off);
+        for (let yy = 0; yy < 8; yy++) for (let xx = 0; xx < 8; xx++) set(x + k * 8 + xx, cy + yy, colors[px[q.v ? 7 - yy : yy][q.h ? 7 - xx : xx]]); });
+      frames.push({ object: o.name, frame: fn, x, y: cy, cols: known.length, rows: 1, colors: colors.map(c => "#" + c.map(hex2).join("")),
+        slots: known.map((q, k) => [q.off, (q.h ? "h" : "") + (q.v ? "v" : ""), k * 8, 0]) });
+      continue;
+    }
     const g = composeFrame(f);
     f.slots.forEach((s, i) => {
       if (!known[i]) return;
@@ -3036,7 +3117,9 @@ async function objectsPngHome() {
   }
   ctx.putImageData(im, 0, 0);
   const png = await canvasPng(c, im);
-  const json = { note: "Each frame lists, per 8x8 slot, the CHR file offset and flips the game draws it with. null = not part of the sheet.", size: [W, H], frames };
+  const json = { note: "Each frame lists, per 8x8 slot, the CHR file offset and flips the game draws it with (and its x, y in the cell when given). null = not part of the sheet.", size: [W, H], frames };
+  const links = [...chrLinks()].map(([src, mir]) => [src, mir]);
+  if (links.length) json.links = links; // copies of a tile the game swaps in; they follow the source
   return [png, JSON.stringify(json, null, 1) + "\n"];
 }
 async function readObjectsPng(pngBytes, json) {
@@ -3046,7 +3129,7 @@ async function readObjectsPng(pngBytes, json) {
     const pal = f.colors.map(h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16))).concat([GUTTER]);
     f.slots.forEach((slot, i) => {
       if (!slot) return;
-      const [off, flip] = slot, ox = f.x + (i % f.cols) * 8, oy = f.y + Math.floor(i / f.cols) * 8;
+      const [off, flip] = slot, ox = f.x + (slot.length > 2 ? slot[2] : (i % f.cols) * 8), oy = f.y + (slot.length > 2 ? slot[3] : Math.floor(i / f.cols) * 8);
       let px = Array.from({ length: 8 }, (_, y) => Array.from({ length: 8 }, (_, x) => {
         const p = imgPx(img, ox + x, oy + y); if (p[3] < 128) return 0;
         let bi = 0, bd = Infinity; pal.forEach((c, k) => { const d = (c[0] - p[0]) ** 2 + (c[1] - p[1]) ** 2 + (c[2] - p[2]) ** 2; if (d < bd) { bd = d; bi = k; } });
@@ -3061,7 +3144,11 @@ async function readObjectsPng(pngBytes, json) {
 }
 function spritePalConfig() {
   const out = {};
-  for (const [id, cols] of Object.entries(S.spritePals)) { const m = S.profile.palettes[id]; if (m) out[id] = { offset: m.offset, colors: cols }; }
+  for (const [id, cols] of Object.entries(S.spritePals)) {
+    const m = S.profile.palettes[id]; if (!m) continue;
+    out[id] = { offset: m.offset, colors: cols };
+    for (const mo of m.mirror || []) out[`${id}@${mo}`] = { offset: mo, colors: cols }; // the game keeps a second copy
+  }
   return out;
 }
 
@@ -3849,7 +3936,8 @@ function bootSample() {
     }
   } catch (e) { restored = false; }
   if (!restored) try { bootSample(); } catch (e) { console.error("sample", e); }
-  loadProfile(SMB_PROFILE);
+  let game = SMB_PROFILE; try { const o = JSON.parse(localStorage.getItem(STORE_KEY) || "{}"); game = BUILTIN_PROFILES.find(q => q.game === o.game) || SMB_PROFILE; } catch (e) { /* storage unavailable */ }
+  loadProfile(game);
   buildFrames(); fullRefresh(); renderSeg();
   requestAnimationFrame(loop);
 })();

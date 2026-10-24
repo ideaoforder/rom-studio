@@ -1,10 +1,10 @@
 # ROM Studio
 
-A browser workbench for reskinning **Super Mario Bros. (NES)**: the player, enemies and items, blocks, sound effects and music.
+A browser workbench for reskinning NES games. **Super Mario Bros.**: the player, enemies and items, blocks, sound effects and music. **Mega Man 3**: Mega Man's 25 frames and his palettes (per weapon, plus his face).
 
 **Open it:** https://ideaoforder.github.io/rom-studio/ (works on iPad, too).
 
-Bring your own ROM: open a legally dumped *Super Mario Bros. (World)* `.nes` file. Nothing from the game is included here; all art, sounds and music are read from the ROM you open, and it never leaves your browser.
+Bring your own ROM: open a legally dumped *Super Mario Bros. (World)* or *Mega Man 3 (USA)* `.nes` file; the page picks the game from the ROM. Nothing from the game is included here; all art, sounds and music are read from the ROM you open, and it never leaves your browser.
 
 The command-line tools in `tools/` (Ruby, stdlib only) rebuild the same ROM from a downloaded project zip. Run them from inside `tools/`.
 

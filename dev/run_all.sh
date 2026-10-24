@@ -6,4 +6,5 @@ status=0
 for t in test_bench test_objects test_powerups test_blocks test_sounds test_scope test_music test_ipad; do
   echo "== $t"; python3 "$t.py" || status=1
 done
+if [ -n "$MM3_ROM" ]; then echo "== test_mm3"; python3 test_mm3.py || status=1; fi
 exit $status

@@ -125,12 +125,34 @@ module SMB
 
   # ------------------------------------------------------------- ROM
   class Rom
-    attr_reader :bytes
+    attr_reader :bytes, :profile
 
-    def initialize(path)
+    # profile: a non-SMB game profile (profile.json); nil = Super Mario Bros. (World) with its strict checks
+    def initialize(path, profile: nil)
       @path = path
+      @profile = profile
       @bytes = File.binread(path).bytes
-      validate!
+      @profile ? validate_generic! : validate!
+    end
+
+    def generic? = !@profile.nil?
+
+    # CHR-ROM region from the iNES header: [start, end)
+    def chr_range
+      trainer = (@bytes[6] & 4).zero? ? 0 : 512
+      start = 16 + trainer + @bytes[4] * 0x4000
+      [start, start + @bytes[5] * 0x2000]
+    end
+
+    def validate_generic!
+      game = @profile["game"] || "this profile"
+      abort "#{@path}: not an iNES file" unless @bytes[0, 4] == [0x4E, 0x45, 0x53, 0x1A]
+      size = @profile.dig("rom", "size")
+      abort "#{@path}: #{game} expects #{size} bytes; this file is #{@bytes.size}" if size && @bytes.size != size
+      (@profile.dig("rom", "check") || []).each do |off, hex|
+        want = hex.scan(/../).map { |h| h.to_i(16) }
+        abort "#{@path}: doesn't match the #{game} profile (0x#{off.to_s(16)})" unless @bytes[off, want.size] == want
+      end
     end
 
     def validate!
@@ -191,10 +213,13 @@ module SMB
       end
     end
 
+    # End of PRG (= start of CHR) for this cart.
+    def prg_end = generic? ? chr_range[0] : CHR_OFFSET
+
     # Palette bytes described by offset (from a game profile), validated.
     def set_bytes(offset, colors, label)
       vals = colors.map { |c| Integer(c.to_s, 16) }
-      abort "#{label}: offset 0x#{offset.to_s(16)} is outside PRG" unless offset.between?(0x10, CHR_OFFSET - vals.size)
+      abort "#{label}: offset 0x#{offset.to_s(16)} is outside PRG" unless offset.between?(0x10, prg_end - vals.size)
       abort "#{label}: colors must be 00-3F" unless vals.all? { |v| v.between?(0, 0x3F) }
       @bytes[offset, vals.size] = vals
     end
@@ -203,7 +228,7 @@ module SMB
     # nonzero: the game's code branches on this value, so 0 would crash it.
     def patch_byte(offset, value, label, nonzero: false)
       v = Integer(value.to_s, 16)
-      abort "#{label}: offset 0x#{offset.to_s(16)} is outside PRG" unless offset.between?(0x10, CHR_OFFSET - 1)
+      abort "#{label}: offset 0x#{offset.to_s(16)} is outside PRG" unless offset.between?(0x10, prg_end - 1)
       abort "#{label}: value must be 00-FF" unless v.between?(0, 0xFF)
       abort "#{label}: can't be 00 — the game's code relies on it being nonzero" if nonzero && v.zero?
       @bytes[offset] = v
@@ -213,7 +238,7 @@ module SMB
     def patch_range(offset, hex, label)
       abort "#{label}: hex must be pairs of 0-9A-F" unless hex =~ /\A(?:[0-9a-fA-F]{2})+\z/
       bytes = [hex].pack("H*").bytes
-      abort "#{label}: 0x#{offset.to_s(16)}+#{bytes.size} runs outside PRG" unless offset >= 0x10 && offset + bytes.size <= CHR_OFFSET
+      abort "#{label}: 0x#{offset.to_s(16)}+#{bytes.size} runs outside PRG" unless offset >= 0x10 && offset + bytes.size <= prg_end
       @bytes[offset, bytes.size] = bytes
     end
 
@@ -499,12 +524,13 @@ module SMB
       cols = f.fetch("cols")
       f.fetch("slots").each_with_index do |slot, i|
         next unless slot
-        off, flip = slot
-        unless off.between?(CHR_OFFSET, CHR_OFFSET + 0x2000 - 16) && ((off - CHR_OFFSET) % 16).zero?
+        off, flip, sx, sy = slot
+        c0, c1 = rom.generic? ? rom.chr_range : [CHR_OFFSET, CHR_OFFSET + 0x2000]
+        unless off.between?(c0, c1 - 16) && ((off - c0) % 16).zero?
           abort "objects.json: #{f['object']} / #{f['frame']} points at 0x#{off.to_s(16)}, which isn't a CHR tile"
         end
-        ox = f.fetch("x") + (i % cols) * 8
-        oy = f.fetch("y") + (i / cols) * 8
+        ox = f.fetch("x") + (sx || (i % cols) * 8)
+        oy = f.fetch("y") + (sy || (i / cols) * 8)
         px = (0...8).map do |y|
           (0...8).map do |x|
             r, g, b, a = img[oy + y][ox + x]
@@ -521,6 +547,7 @@ module SMB
 
     conflicts = []
     changed = 0
+    original_tiles = candidates.keys.to_h { |off| [off, rom.bytes[off, 16]] }
     candidates.each do |off, cands|
       orig = decode_tile(rom.bytes[off, 16])
       edits = cands.reject { |px, _| px == orig }
@@ -533,6 +560,11 @@ module SMB
       changed += 1
     end
     abort "Shared tiles disagree in objects.png:\n  #{conflicts.join("\n  ")}" unless conflicts.empty?
+    # Linked copies (tiles the game swaps in from another CHR bank) follow their source.
+    (key["links"] || []).each do |src, mirrors|
+      next if rom.bytes[src, 16] == original_tiles.fetch(src) { rom.bytes[src, 16] }
+      mirrors.each { |m| rom.bytes[m, 16] = rom.bytes[src, 16] }
+    end
     changed
   end
 
@@ -565,7 +597,10 @@ module SMB
   def self.load_config(config_path)
     dir = File.dirname(config_path)
     cfg = JSON.parse(File.read(config_path))
-    [cfg, dir, Rom.new(File.expand_path(cfg.fetch("input"), dir))]
+    prof_path = cfg["profile"] && File.expand_path(cfg["profile"], dir)
+    prof = prof_path && File.exist?(prof_path) ? JSON.parse(File.read(prof_path)) : nil
+    prof = nil if prof && prof["player"] == "smb"
+    [cfg, dir, Rom.new(File.expand_path(cfg.fetch("input"), dir), profile: prof)]
   end
 
   def self.sheet_colors(cfg, rom, view = "player1")
@@ -697,7 +732,7 @@ module SMB
     out = File.expand_path(cfg.fetch("output"), dir)
     rom.write(out)
     puts "wrote #{out}"
-    if (c = cfg["chr"])
+    if !rom.generic? && (c = cfg["chr"]) # the raw CHR dump is SMB-specific
       File.binwrite(File.expand_path(c, dir), rom.bytes[CHR_OFFSET, 0x2000].pack("C*"))
       puts "wrote #{c} (raw 8KB CHR)"
     end
@@ -705,6 +740,7 @@ module SMB
       File.binwrite(File.expand_path(p, dir), ips(original, rom.bytes))
       puts "wrote #{p} (shareable patch — contains no Nintendo data you didn't change)"
     end
+    return if rom.generic? # the preview sheet is SMB-specific
     prev = out.sub(/\.nes\z/i, "") + ".preview.png"
     preview(rom, prev)
     puts "wrote #{prev} (rows: player1, player2, fire)"

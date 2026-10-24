@@ -21,6 +21,18 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
 - **Export:** `downloadProject()` → zip of `parts.png/json`, `rig.yml`, `objects.png/json`, `profile.json`, `config.json`, `music.json`, `smb.nes`, `smb_hacked.nes/.ips`. Each piece is built in `tryPart()`. On failure it still saves, with `backup.json` inside; total failure opens the rescue dialog (`#rescueDlg`: save or copy `smb-skin-backup/1` JSON). **Open project…** accepts zips, backup JSON, or the raw `snap()` JSON.
 - **PNG output:** `canvasPng()` uses `toBlob`, falling back to `encodePng()` (stored zlib), because some views return null from `toBlob`. That was the 2026-10-20 download bug.
 
+## Supported games
+
+`BUILTIN_PROFILES = [SMB_PROFILE, MM3_PROFILE]`. Opening a ROM picks the profile whose `rom.size` + `rom.check` match (asks for a second open if unsaved edits would be cleared). The autosave remembers which game it belongs to (`snap().game`).
+
+### Mega Man 3 (USA), MMC3, 256 KB PRG + 128 KB CHR-ROM
+
+- Sprite renderer at $1FF13B: OAM/anim ID ($05C0,x) → bank $1A (<$80) or $1B, anim ptr lo/hi at $8000/$8080 → `[last, duration, frame ids…]`; frame ptr at $8100/$8200 → `[count|$80 = offsets in bank $14 else $19, offset-table index (+1 when facing flips), (tile, attr)…]`; offsets ptr at $BE00/$BF00 (minus 2) → `(dy, dx)` pairs. Facing = $0580,x bit 6 (EOR attr $40, index +1).
+- Sprite CHR: MMC3 R2–R5 from RAM $EA–$ED (1 KB banks at $1000/$1400/$1800/$1C00). $EA = 0, $EB = per-weapon Mega Man bank (`$A634[$A0]`: 1,2,7,3,1,7,1,4,6,2,6,3), $EC = stage bank whose first 32 tiles are shared Mega Man extras (17 banks carry identical copies).
+- Profile: one "Mega Man" object, 25 frames from anims $01–$14 as free-placed `sprites: [tile, dx, dy, palette]`, `chr_banks: [0, 1, 0x0A, 0]`, palette 0 = body (`body.N` = `$A641 + 4N` per weapon, `body.0` also mirrored at `$C898+1`), palette 1 = `face` (`$C898+5`). `chr_links` make the per-weapon / per-stage copies follow edits (JS `chrEditsWithLinks()`, Ruby `links` in objects.json).
+- Verified: profile frames == the ROM tables; the model matched the running game's OAM (cynes emulator) on 232/260 recorded frames (misses = frame-timing); recolored + repainted build boots to gameplay with the new palette in RAM. `dev/test_mm3.py` (needs `MM3_ROM`, optional `pip install cynes`).
+- Not yet: enemies/bosses (stage-specific banks $EC/$ED), weapon-specific poses (other $EB banks), weapon names for the palette variants (order follows the game's weapon index), sounds/music.
+
 ## ROM facts (SMB World, NROM)
 
 16-byte header, PRG at 0x10, CHR at 0x8010 (sprites) / 0x9010 (BG). File offset = addr − 0x8000 + 0x10. Labels from the Xkeeper0 smb1 disassembly. Key ones: `Palette0_MTiles` $8B10, `Palette3Data` $89D1, `ColorRotatePalette` $89C3, `BackgroundColors` $85CF, `PowerUpGfxTable` $E6BE, SoundEngine $F2D0.
@@ -61,6 +73,7 @@ Each test writes scratch output to `dev/<name>_test/` (ignored by git).
 
 ## Next
 
+- [ ] MM3: enemies and bosses per stage; weapon names; per-weapon poses.
 - [ ] Mega Man 6 (CHR-RAM; uncompressed graphics in PRG): run `tools/sprite_capture.lua` in MesenCE 2.2.1 → `capture.jsonl`, then write `capture_to_profile.rb`, allow PRG tile offsets (relax the CHR-range check in `import_objects` and the SMB-only ROM validation), and support freely placed sprite frames.
 - [ ] Optional: original blank enemy templates; a CLI `skin` subcommand.
 
