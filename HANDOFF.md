@@ -31,7 +31,8 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
 - Sprite CHR: MMC3 R2–R5 from RAM $EA–$ED (1 KB banks at $1000/$1400/$1800/$1C00). $EA = 0, $EB = per-weapon Mega Man bank (`$A634[$A0]`: 1,2,7,3,1,7,1,4,6,2,6,3), $EC = stage bank whose first 32 tiles are shared Mega Man extras (17 banks carry identical copies).
 - Profile: one "Mega Man" object, 25 frames from anims $01–$14 as free-placed `sprites: [tile, dx, dy, palette]`, `chr_banks: [0, 1, 0x0A, 0]`, palette 0 = body (`body.N` = `$A641 + 4N` per weapon, `body.0` also mirrored at `$C898+1`), palette 1 = `face` (`$C898+5`). `chr_links` make the per-weapon / per-stage copies follow edits (JS `chrEditsWithLinks()`, Ruby `links` in objects.json).
 - Verified: profile frames == the ROM tables; the model matched the running game's OAM (cynes emulator) on 232/260 recorded frames (misses = frame-timing); recolored + repainted build boots to gameplay with the new palette in RAM. `dev/test_mm3.py` (needs `MM3_ROM`, optional `pip install cynes`).
-- Not yet: enemies/bosses (stage-specific banks $EC/$ED), weapon-specific poses (other $EB banks), weapon names for the palette variants (order follows the game's weapon index), sounds/music.
+- Weapon index → name (confirmed by Mark in play): 0 Mega Buster, 1 Gemini, 2 Needle, 3 Hard, 4 Magnet, 5 Top, 6 Snake, 7 Rush Coil, 8 Spark, 9 Rush Marine, 10 Shadow, 11 Rush Jet (9 and 11 per the disassembly's Rush checks).
+- Not yet: enemies/bosses (stage-specific banks $EC/$ED), weapon-specific poses (other $EB banks), sounds/music.
 
 ## ROM facts (SMB World, NROM)
 
@@ -73,7 +74,7 @@ Each test writes scratch output to `dev/<name>_test/` (ignored by git).
 
 ## Next
 
-- [ ] MM3: enemies and bosses per stage; weapon names; per-weapon poses.
+- [ ] MM3: enemies and bosses per stage; per-weapon poses.
 - [ ] Mega Man 6 (CHR-RAM; uncompressed graphics in PRG): run `tools/sprite_capture.lua` in MesenCE 2.2.1 → `capture.jsonl`, then write `capture_to_profile.rb`, allow PRG tile offsets (relax the CHR-range check in `import_objects` and the SMB-only ROM validation), and support freely placed sprite frames.
 - [ ] Optional: original blank enemy templates; a CLI `skin` subcommand.
 
