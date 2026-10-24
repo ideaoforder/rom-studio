@@ -31,6 +31,14 @@ with sync_playwright() as p:
         got = [(s[0], s[1], s[2], 0 if s[3] is None else 1) for s in prof["objects"][0]["frames"][name]["sprites"]]
         ok &= want == got
     print("profile frames match the ROM's sprite tables:", ok)
+    groups = {}
+    for o in prof["objects"]: groups[o.get("group")] = groups.get(o.get("group"), 0) + 1
+    print("objects by group:", groups)
+    # bosses draw from bank $15 during the fight: Hard Man's first frame vs that table
+    hm = next(o for o in prof["objects"] if o["name"] == "Hard Man")
+    base = PRG(0x15); aid = 0x2B; p0 = rom[base + aid] | rom[base + 0x80 + aid] << 8; ao = base + p0 - 0x8000
+    want = [((f"{t:02X}" + ("h" if a & 0x40 else "") + ("v" if a & 0x80 else "")), dx, dy) for (t, a, dx, dy) in frame_model(0x15, rom[ao + 2])]
+    print("Hard Man frame 1 matches the boss table:", [tuple(x[:3]) for x in hm["frames"]["1"]["sprites"]] == want)
     pg.screenshot(path=f"{T}/mm3.png")
     # paint the stand frame, recolor body (Mega Buster) and face
     # paint a tile that lives in the per-weapon bank ($40-$7F), so its copies must follow
@@ -39,6 +47,10 @@ with sync_playwright() as p:
        let done = false; for (let y = 0; y < 8 && !done; y++) for (let x = 0; x < 8 && !done; x++) { const hit = slotAt(f, q.x + x, q.y + y);
          if (hit && hit.s === q) { setObjPixel(f, q.x + x, q.y + y, (tileAt(q.off)[hit.ly][hit.lx] + 1) % 4); done = true; } }
        S.spritePals['body.0'] = ['0F','16','06']; S.palEdited['body.0'] = true; S.spritePals['face'] = ['0F','30','27']; S.palEdited['face'] = true; objChanged(); }""", tile_off)
+    # and an enemy that appears with different CHR banks in other stages
+    enemy_off = pg.evaluate("""(() => { const o = S.objs.find(o => o.chr_alt.length && Object.values(o.frames).some(f => f.slots.some(q => chrLinks().has(q.off))));
+       const f = Object.values(o.frames).find(f => f.slots.some(q => chrLinks().has(q.off))); const q = f.slots.find(q => chrLinks().has(q.off));
+       S.chrEdits[q.off] = tileAt(q.off).map(r => r.map(v => (v + 1) % 4)); return q.off; })()""")
     links = dict((int(k), v) for k, v in pg.evaluate("[...chrLinks()]"))
     print("linked copies for the painted tile:", len(links.get(tile_off, [])), "| tiles with copies:", len(links))
     with pg.expect_download() as d: pg.click("#btnSave")
@@ -49,7 +61,7 @@ with sync_playwright() as p:
     print("ruby:", r.returncode, r.stdout.strip().splitlines()[:2], r.stderr[-300:])
     rb = open(f"{T}/x/game_hacked.nes", "rb").read()
     diff = [i for i in range(len(rom)) if rom[i] != rb[i]]
-    mir_ok = all(rb[m:m + 16] == rb[tile_off:tile_off + 16] for m in links.get(tile_off, []))
+    mir_ok = all(rb[m:m + 16] == rb[t:t + 16] for t in (tile_off, enemy_off) for m in links.get(t, []))
     print("JS == Ruby:", js == rb, "| bytes changed:", len(diff), "| painted tile changed:", rom[tile_off:tile_off+16] != rb[tile_off:tile_off+16], "| copies follow:", mir_ok)
     A641 = PRG(2) + 0x641; C898 = PRG(0x1E) + 0x898
     print("palettes: body", rb[A641:A641+3].hex(), "start copy", rb[C898+1:C898+4].hex(), "face", rb[C898+5:C898+8].hex())
