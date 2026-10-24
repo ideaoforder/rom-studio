@@ -51,6 +51,10 @@ with sync_playwright() as p:
     enemy_off = pg.evaluate("""(() => { const o = S.objs.find(o => o.chr_alt.length && Object.values(o.frames).some(f => f.slots.some(q => chrLinks().has(q.off))));
        const f = Object.values(o.frames).find(f => f.slots.some(q => chrLinks().has(q.off))); const q = f.slots.find(q => chrLinks().has(q.off));
        S.chrEdits[q.off] = tileAt(q.off).map(r => r.map(v => (v + 1) % 4)); return q.off; })()""")
+    # blocks: repaint a background tile on Snake Man's first screen and recolor its main palette + backdrop
+    block_off = pg.evaluate("""(() => { const o = S.objs.find(o => o.category === 'blocks' && o.name === 'Snake Man'); const f = o.frames['first screen'];
+       const q = f.slots[29 * 32 + 3]; S.chrEdits[q.off] = Array.from({length: 8}, (_, y) => Array.from({length: 8}, (_, x) => ((x ^ y) & 1) ? 3 : 1));
+       S.spritePals['st05.bg0'] = ['30', '16', '06']; S.palEdited['st05.bg0'] = true; S.spritePals['st05.sky'] = ['01']; S.palEdited['st05.sky'] = true; return q.off; })()""")
     links = dict((int(k), v) for k, v in pg.evaluate("[...chrLinks()]"))
     print("linked copies for the painted tile:", len(links.get(tile_off, [])), "| tiles with copies:", len(links))
     with pg.expect_download() as d: pg.click("#btnSave")
@@ -65,6 +69,7 @@ with sync_playwright() as p:
     print("JS == Ruby:", js == rb, "| bytes changed:", len(diff), "| painted tile changed:", rom[tile_off:tile_off+16] != rb[tile_off:tile_off+16], "| copies follow:", mir_ok)
     A641 = PRG(2) + 0x641; C898 = PRG(0x1E) + 0x898
     print("palettes: body", rb[A641:A641+3].hex(), "start copy", rb[C898+1:C898+4].hex(), "face", rb[C898+5:C898+8].hex())
+    print("block tile changed:", rom[block_off:block_off+16] != rb[block_off:block_off+16], "| groups:", sorted(set(o.get("category", "objects") for o in prof["objects"])))
     # reopen round trip
     pg2 = ctx.new_page(); pg2.on("pageerror", lambda e: errors.append(str(e)))
     pg2.goto(f"file://{REPO}/index.html"); pg2.wait_for_timeout(500)

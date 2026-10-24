@@ -1,6 +1,6 @@
 # ROM Studio
 
-A browser workbench for reskinning NES games. **Super Mario Bros.**: the player, enemies and items, blocks, sound effects and music. **Mega Man 3**: Mega Man's 25 frames and his palettes (per weapon, plus his face).
+A browser workbench for reskinning NES games. **Super Mario Bros.**: the player, enemies and items, blocks, sound effects and music. **Mega Man 3**: Mega Man (25 frames, palettes per weapon), the 8 robot masters, 64 enemies, item pickups, and each stage's blocks.
 
 **Open it:** https://ideaoforder.github.io/rom-studio/ (works on iPad, too).
 

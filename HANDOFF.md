@@ -32,7 +32,10 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
 - Profile: one "Mega Man" object, 25 frames from anims $01–$14 as free-placed `sprites: [tile, dx, dy, palette]`, `chr_banks: [0, 1, 0x0A, 0]`, palette 0 = body (`body.N` = `$A641 + 4N` per weapon, `body.0` also mirrored at `$C898+1`), palette 1 = `face` (`$C898+5`). `chr_links` make the per-weapon / per-stage copies follow edits (JS `chrEditsWithLinks()`, Ruby `links` in objects.json).
 - Verified: profile frames == the ROM tables; the model matched the running game's OAM (cynes emulator) on 232/260 recorded frames (misses = frame-timing); recolored + repainted build boots to gameplay with the new palette in RAM. `dev/test_mm3.py` (needs `MM3_ROM`, optional `pip install cynes`).
 - Weapon index → name (confirmed by Mark in play): 0 Mega Buster, 1 Gemini, 2 Needle, 3 Hard, 4 Magnet, 5 Top, 6 Snake, 7 Rush Coil, 8 Spark, 9 Rush Marine, 10 Shadow, 11 Rush Jet (9 and 11 per the disassembly's Rush checks).
-- Not yet: enemies/bosses (stage-specific banks $EC/$ED), weapon-specific poses (other $EB banks), sounds/music.
+- **Bosses** (8 robot masters): during fights ($5A set, slot ≥ $10) sprite tables come from PRG bank **$15**, not $1A/$1B. Animations = initial OAM ID (`enemy_OAM_ID_g`, bank 0 $A300) + every `LDA #id / JSR reset_sprite_anim` in that boss's code region (banks 06/07). CHR + palettes from the boss room's sprite set.
+- **Enemies/items**: stage enemy lists at stage bank $AB00 screen / $AC00 x / $AD00 y / $AE00 global ID. Area k covers `(AA40[k] & $1F) + 1` screens; its sprite set is `AA60[2k]` → bank 1 `$A200[2s]` = ($EC, $ED), sprite palettes 2/3 at `$A030 + 8s`. Names from the disassembly's `sprite_main_ptr_lo` labels; extra animations from each main routine's code (bank $1C/$1D). Same enemy elsewhere with other banks → `chr_alt` links. Checked in cynes: frames ~94% OAM match (rest timing), sprite sets 100%.
+- **Blocks**: stage bank layout — screen list `$AA00[i]` → 64-byte screen at `$AF00 + id*64` (row-major 8×8 of 32×32 blocks) → `$B700 + 4*block` (TL, TR, BL, BR metatiles) → metatile tiles `$BB00/$BC00/$BD00/$BE00 + m`, palette+collision `$BF00 + m` (low 2 bits = palette). BG CHR = 2 KB banks `$AA80/$AA81`; BG palettes (area 0) at `$AA82 + 20*AA61`. Each stage object has the stage's first screen and a sheet of every metatile its screens use.
+- Not yet: Doc Robot / Wily bosses, weapon-specific Mega Man poses, later-area BG palettes/CHR swaps, sounds/music.
 
 ## ROM facts (SMB World, NROM)
 
@@ -74,7 +77,7 @@ Each test writes scratch output to `dev/<name>_test/` (ignored by git).
 
 ## Next
 
-- [ ] MM3: enemies and bosses per stage; per-weapon poses.
+- [ ] MM3: Doc Robot and Wily bosses; per-weapon poses; per-area block palettes.
 - [ ] Mega Man 6 (CHR-RAM; uncompressed graphics in PRG): run `tools/sprite_capture.lua` in MesenCE 2.2.1 → `capture.jsonl`, then write `capture_to_profile.rb`, allow PRG tile offsets (relax the CHR-range check in `import_objects` and the SMB-only ROM validation), and support freely placed sprite frames.
 - [ ] Optional: original blank enemy templates; a CLI `skin` subcommand.
 
