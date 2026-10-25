@@ -54,6 +54,7 @@ with sync_playwright() as p:
     pg.click(f".oitem >> nth={names.index('Brick')}"); pg.wait_for_timeout(150)
     pg.locator("#opalSlots .opal-row >> nth=0").locator(".slot >> nth=1").click(); pg.click('#opicker button[title="$2A"]')
     cv = pg.locator("#oframes canvas").first; bb = cv.bounding_box()
+    pg.keyboard.press("b")  # Blocks opens on the Tile tool; paint with the pen
     v = pg.evaluate("() => composeFrame(curObj().frames.plain)[3][3]"); pg.keyboard.press(str(3 if v != 3 else 1))
     pg.mouse.click(bb["x"] + bb["width"] * 3.5 / 16, bb["y"] + bb["height"] * 3.5 / 16)
     print("tile info:", pg.text_content("#tileInfo")[:90])

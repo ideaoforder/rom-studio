@@ -1,0 +1,30 @@
+from playwright.sync_api import sync_playwright
+import os, sys
+MM3=os.environ.get("MM3_ROM") or sys.exit("Set MM3_ROM"); O=os.path.dirname(os.path.abspath(__file__))+"/"
+with sync_playwright() as p:
+    b=p.chromium.launch(); pg=b.new_page(viewport={"width":1400,"height":1000}); errs=[]; pg.on("pageerror", lambda e: errs.append(str(e)))
+    pg.route("https://fonts.**/**", lambda r: r.abort())
+    pg.goto("file://"+os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+"/index.html"); pg.wait_for_timeout(500)
+    pg.set_input_files("#fRom", MM3); pg.wait_for_timeout(900)
+    pg.click("#tabBlocks"); pg.wait_for_timeout(600)
+    names=pg.eval_on_selector_all(".oitem span:not(.dot)","e=>e.map(x=>x.textContent)")
+    pg.click(f".oitem >> nth={names.index('Snake Man')}"); pg.wait_for_timeout(600)
+    cv=pg.locator("#oframes canvas").first; bb=cv.bounding_box()
+    # hover over the pipe coil near bottom-left
+    pg.mouse.move(bb["x"]+bb["width"]*0.07, bb["y"]+bb["height"]*0.88); pg.wait_for_timeout(200)
+    print("hover:", pg.text_content("#hTileZ"), "|", pg.text_content("#tzHint"))
+    pg.keyboard.press("t"); pg.mouse.click(bb["x"]+bb["width"]*0.07, bb["y"]+bb["height"]*0.88); pg.wait_for_timeout(200)
+    print("pinned:", pg.text_content("#tzHint"), "| done visible:", pg.is_visible("#tzDone"))
+    pg.mouse.move(bb["x"]+10, bb["y"]+10); pg.wait_for_timeout(150)
+    print("still pinned after moving away:", pg.text_content("#hTileZ"))
+    before=pg.evaluate("Object.keys(S.chrEdits).length")
+    tz=pg.locator("#tzoom").bounding_box()
+    pg.keyboard.press("3"); pg.mouse.move(tz["x"]+tz["width"]*0.4, tz["y"]+tz["height"]*0.4); pg.mouse.down(); pg.mouse.move(tz["x"]+tz["width"]*0.6, tz["y"]+tz["height"]*0.4, steps=6); pg.mouse.up(); pg.wait_for_timeout(200)
+    print("tiles edited via inspector:", pg.evaluate("Object.keys(S.chrEdits).length")-before)
+    pg.click("#tzNext"); pg.wait_for_timeout(150); print("next ->", pg.text_content("#hTileZ"))
+    pg.screenshot(path=O+"tz_test.png", clip={"x":0,"y":80,"width":1400,"height":900})
+    pg.click("#tabObjects"); pg.wait_for_timeout(500)
+    pg.click(".oitem >> nth=0"); pg.wait_for_timeout(300)
+    cv=pg.locator("#oframes canvas").first; bb=cv.bounding_box(); pg.mouse.move(bb["x"]+bb["width"]*0.5, bb["y"]+bb["height"]*0.3); pg.wait_for_timeout(200)
+    print("sprites hover:", pg.text_content("#hTileZ"))
+    print(errs or "no errors")

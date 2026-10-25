@@ -7,3 +7,4 @@ dev/node_modules/
 dev/*_test/
 dev/ipad.png
 __pycache__/
+dev/tz_test.png

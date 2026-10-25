@@ -183,6 +183,8 @@ details > summary { cursor: pointer; font-size: 12px; color: var(--muted); }
 .rescue::backdrop { background: rgba(0,0,0,.45); }
 .rescue textarea { width: 100%; box-sizing: border-box; font: 11px var(--f-mono); margin: 8px 0; }
 .rescue #rescueErr { color: #b3261e; word-break: break-word; }
+.tzbox { display: flex; justify-content: center; background: #1c1b1a; border-radius: var(--r); padding: 8px; }
+#tzoom { width: 100%; max-width: 288px; aspect-ratio: 1; image-rendering: pixelated; touch-action: none; cursor: crosshair; }
 .opal-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; width: 100%; }
 .opal-row .label { flex-basis: 100%; margin-top: 4px; }
 .opal-slots .slot.locked { cursor: not-allowed; opacity: .75; font-size: 13px; }
@@ -423,6 +425,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line)
           <button type="button" id="oToolPen" aria-pressed="true">Pen <kbd>B</kbd></button>
           <button type="button" id="oToolFill" aria-pressed="false">Fill <kbd>F</kbd></button>
           <button type="button" id="oToolPick" aria-pressed="false">Pick <kbd>I</kbd></button>
+          <button type="button" id="oToolTile" aria-pressed="false" title="Click a tile to edit it up close">Tile <kbd>T</kbd></button>
         </div>
         <span class="spacer"></span>
         <button class="btn" type="button" id="oRevert">Revert to ROM art</button>
@@ -436,7 +439,11 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line)
     </section>
 
     <section class="panel" aria-labelledby="hOPrev">
-      <div class="ph"><h2 id="hOPrev">In motion</h2></div>
+      <div class="ph"><h2 id="hTileZ">Tile</h2><span class="hint" id="tzHint"></span></div>
+      <div class="tzbox"><canvas id="tzoom" width="240" height="240" aria-label="Zoomed view of the selected tile and its neighbors; paint here"></canvas></div>
+      <p class="help" id="tzInfo">Hover the art to see a tile up close. Click with <b>Tile</b> (<kbd>T</kbd>) to pick one and paint it here.</p>
+      <div class="tools"><button class="btn" type="button" id="tzPrev" title="Previous tile in this frame">◀</button><button class="btn" type="button" id="tzNext" title="Next tile in this frame">▶</button><span class="spacer"></span><button class="btn" type="button" id="tzDone">Let go</button></div>
+      <div class="ph" style="margin-top:12px"><h2 id="hOPrev">In motion</h2></div>
       <div class="stagebox"><canvas id="ostage" width="64" height="48" aria-label="Animated preview of the selected object"></canvas></div>
       <div class="modes" id="oclips" role="group" aria-label="Animation"></div>
       <div class="facts" id="ofacts"></div>
@@ -1459,7 +1466,9 @@ function setTool(t) {
   for (const id of ["toolPen", "oToolPen"]) $("#" + id).setAttribute("aria-pressed", String(t === "pen"));
   for (const id of ["toolFill", "oToolFill"]) $("#" + id).setAttribute("aria-pressed", String(t === "fill"));
   for (const id of ["toolPick", "oToolPick"]) $("#" + id).setAttribute("aria-pressed", String(t === "pick"));
+  $("#oToolTile").setAttribute("aria-pressed", String(t === "tile"));
 }
+$("#oToolTile").onclick = () => setTool("tile");
 $("#toolPick").onclick = () => setTool("pick"); $("#oToolPick").onclick = () => setTool("pick");
 $("#toolPen").onclick = () => setTool("pen"); $("#toolFill").onclick = () => setTool("fill");
 $("#btnFlip").onclick = () => { checkpoint(""); S.parts[S.selPart] = S.parts[S.selPart].map(r => r.slice().reverse()); changed(); };
@@ -1955,6 +1964,7 @@ addEventListener("keydown", e => {
   else if (e.key === "b" || e.key === "B") setTool("pen");
   else if (e.key === "f" || e.key === "F") setTool("fill");
   else if (e.key === "i" || e.key === "I") setTool("pick");
+  else if ((e.key === "t" || e.key === "T") && isObjTab()) setTool("tile");
 });
 addEventListener("resize", () => { if (isObjTab()) renderObjFrames(); else if (S.tab === "music") drawRoll(); else layoutPainter(); });
 
@@ -2834,6 +2844,7 @@ function renderObjList() {
 function areaSkyFor(o) { return skyFor(o.home); }
 function selectObj(i) {
   S.ov.sel = i; S.ov.variant = 0; S.ov.area = null; S.ov.clip = null; S.ov.slot = 0; S.ov.slotId = null;
+  TZ.fn = null; TZ.slot = null; TZ.pinned = false;
   renderObjects();
 }
 const oFrameEls = [];
@@ -2859,7 +2870,66 @@ function drawObjFrames() {
     if (S.ov.hoverOff != null) f.slots.forEach(s => { if (s && s.off === S.ov.hoverOff) hl.push([s.x, s.y]); });
     paintComposite(ctx, composeFrame(f), z, colors, sky, hl);
   }
+  drawInspector();
 }
+// ---- tile inspector: a zoomed 3x3-tile window around one slot of a frame; painting here edits the real tiles
+const TZ = { fn: null, slot: null, pinned: false };
+const tzc = $("#tzoom"), tzctx = tzc.getContext("2d"), TZ_SPAN = 24, TZ_Z = 10;
+function inspect(fn, slot, pin) {
+  if (pin) TZ.pinned = true;
+  if (TZ.fn === fn && TZ.slot === slot && !pin) return;
+  TZ.fn = fn; TZ.slot = slot; drawInspector();
+}
+function tzFrame() { const o = curObj(); return o && TZ.fn && o.frames[TZ.fn]; }
+function drawInspector() {
+  const f = tzFrame(), o = curObj();
+  tzctx.fillStyle = "#1c1b1a"; tzctx.fillRect(0, 0, tzc.width, tzc.height);
+  $("#tzDone").hidden = !TZ.pinned; $("#tzPrev").hidden = $("#tzNext").hidden = !TZ.pinned;
+  if (!f || !TZ.slot || !f.slots.includes(TZ.slot)) { $("#hTileZ").textContent = "Tile"; $("#tzHint").textContent = ""; return; }
+  const g = composeFrame(f), colors = colorResolver(o, S.ov.variant, null), sky = areaSky(o);
+  const X0 = TZ.slot.x - 8, Y0 = TZ.slot.y - 8;
+  for (let y = 0; y < TZ_SPAN; y++) for (let x = 0; x < TZ_SPAN; x++) {
+    const fx = X0 + x, fy = Y0 + y; if (fx < 0 || fy < 0 || fy >= g.length || fx >= g[0].length) continue;
+    const v = g[fy][fx]; if (v === -2) continue;
+    const cols = colors(g.pr[fy][fx]);
+    tzctx.fillStyle = v === -1 ? UNKNOWN[((fx >> 2) + (fy >> 2)) & 1] : v === 0 ? css(sky) : css(cols[v]);
+    tzctx.fillRect(x * TZ_Z, y * TZ_Z, TZ_Z, TZ_Z);
+  }
+  // dim the neighbors, outline the tile
+  tzctx.fillStyle = "rgba(0,0,0,.35)";
+  tzctx.fillRect(0, 0, 240, 80); tzctx.fillRect(0, 160, 240, 80); tzctx.fillRect(0, 80, 80, 80); tzctx.fillRect(160, 80, 80, 80);
+  tzctx.strokeStyle = "#fff"; tzctx.lineWidth = 2; tzctx.strokeRect(81, 81, 78, 78);
+  const t = (TZ.slot.off - S.profile.rom.chr_offset) / 16;
+  $("#hTileZ").textContent = `Tile $${hex2(t & 0xFF)}`;
+  $("#tzHint").textContent = TZ.pinned ? "editing" : "hover";
+  $("#tzInfo").textContent = describeTile(TZ.slot.off) + (TZ.pinned ? "" : " · click it with Tile (T) to edit here");
+}
+function tzPos(e) { const r = tzc.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / r.width * TZ_SPAN), Math.floor((e.clientY - r.top) / r.height * TZ_SPAN)]; }
+let tzDown = false, tzVal = 1;
+tzc.addEventListener("contextmenu", e => e.preventDefault());
+tzc.addEventListener("pointerdown", e => {
+  const f = tzFrame(); if (!f || !TZ.slot) return;
+  TZ.pinned = true;
+  const [x, y] = tzPos(e), fx = TZ.slot.x - 8 + x, fy = TZ.slot.y - 8 + y;
+  if (fx < 0 || fy < 0 || fx >= f.w || fy >= f.h) return;
+  if (e.altKey || S.tool === "pick") { const g = composeFrame(f); if (g[fy][fx] >= 0) setColor(g[fy][fx]); return; }
+  checkpoint(""); tzVal = e.button === 2 ? 0 : S.color; tzDown = true; tzc.setPointerCapture(e.pointerId);
+  if (setObjPixel(f, fx, fy, tzVal)) objChanged(true);
+});
+tzc.addEventListener("pointermove", e => {
+  if (!tzDown) return; const f = tzFrame(); if (!f) return;
+  const [x, y] = tzPos(e), fx = TZ.slot.x - 8 + x, fy = TZ.slot.y - 8 + y;
+  if (fx >= 0 && fy >= 0 && fx < f.w && fy < f.h && setObjPixel(f, fx, fy, tzVal)) objChanged(true);
+});
+const tzEnd = () => { if (tzDown) { tzDown = false; objChanged(); } };
+tzc.addEventListener("pointerup", tzEnd); tzc.addEventListener("pointercancel", tzEnd);
+$("#tzDone").onclick = () => { TZ.pinned = false; drawInspector(); };
+function tzStep(dir) {
+  const f = tzFrame(); if (!f) return;
+  const list = f.slots.filter(Boolean), i = list.indexOf(TZ.slot);
+  TZ.slot = list[(i + dir + list.length) % list.length]; S.ov.hoverOff = TZ.slot.off; drawObjFrames();
+}
+$("#tzPrev").onclick = () => tzStep(-1); $("#tzNext").onclick = () => tzStep(1);
 function slotAt(f, x, y) { // topmost slot with an opaque pixel here, else the topmost slot covering it
   let fallback = null;
   for (const s of f.slots) {
@@ -2897,7 +2967,10 @@ function wireObjCanvas(c, f, fn, z) {
   c.addEventListener("contextmenu", e => e.preventDefault());
   c.addEventListener("pointerdown", e => {
     const [x, y] = pos(e), hit = slotAt(f, x, y); if (!hit) return;
-    S.ov.hoverOff = hit.s.off; $("#tileInfo").textContent = describeTile(hit.s.off); drawObjFrames();  // tap-to-inspect on touch
+    S.ov.hoverOff = hit.s.off; $("#tileInfo").textContent = describeTile(hit.s.off);  // tap-to-inspect on touch
+    if (S.tool === "tile") { inspect(fn, hit.s, true); drawObjFrames(); return; }
+    if (!TZ.pinned) inspect(fn, hit.s);
+    drawObjFrames();
     if (e.altKey || S.tool === "pick") { const g = composeFrame(f); if (g[y][x] >= 0) setColor(g[y][x]); if (S.tool === "pick") setTool("pen"); return; }
     checkpoint("");
     val = e.button === 2 ? 0 : S.color;
@@ -2917,6 +2990,7 @@ function wireObjCanvas(c, f, fn, z) {
   c.addEventListener("pointermove", e => {
     const [x, y] = pos(e), hit = slotAt(f, x, y);
     const off = hit ? hit.s.off : null;
+    if (hit && !TZ.pinned) inspect(fn, hit.s);
     if (off !== S.ov.hoverOff) { S.ov.hoverOff = off; $("#tileInfo").textContent = off == null ? "Empty here: the game draws nothing in this spot." : describeTile(off); drawObjFrames(); }
     if (down && hit && setObjPixel(f, x, y, val)) objChanged(true);
   });
@@ -3069,6 +3143,8 @@ $("#oRevert").onclick = () => {
 };
 function setTab(t) {
   S.tab = t;
+  if (t !== "objects" && t !== "blocks" && S.tool === "tile") setTool("pen");
+  if (t === "blocks" && S.tab !== undefined) setTool("tile"); // big level art: click picks a tile to edit up close
   for (const [id, v] of [["Player", "player"], ["Objects", "objects"], ["Sounds", "sounds"], ["Music", "music"]]) {
     $("#tab" + id).setAttribute("aria-selected", String(t === v)); $("#view" + id).hidden = t !== v && !(v === "objects" && t === "blocks");
   }
