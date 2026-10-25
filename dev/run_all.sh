@@ -3,7 +3,7 @@
 cd "$(dirname "$0")" || exit 1
 : "${SMB_ROM:?Set SMB_ROM to your Super Mario Bros. (World) .nes}"
 status=0
-for t in test_bench test_objects test_powerups test_blocks test_sounds test_scope test_music test_ipad; do
+for t in test_bench test_objects test_powerups test_blocks test_sounds test_scope test_music test_ipad test_mechanics; do
   echo "== $t"; python3 "$t.py" || status=1
 done
 if [ -n "$MM3_ROM" ]; then for t in test_mm3 test_tile_inspector; do echo "== $t"; python3 "$t.py" || status=1; done; fi

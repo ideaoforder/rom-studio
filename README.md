@@ -2,6 +2,8 @@
 
 A browser workbench for reskinning NES games. **Super Mario Bros.**: the player, enemies and items, blocks, sound effects and music. **Mega Man 3**: Mega Man (25 frames, palettes per weapon), the 8 robot masters, 64 enemies, item pickups, and each stage's blocks.
 
+**Mechanics** (both games): invincibility, jump height, gravity, speed, and more. SMB adds grip (ice physics), flap-to-fly, infinite lives and Bowser's health. Mega Man 3 adds infinite weapon energy and weapon power.
+
 **Open it:** https://ideaoforder.github.io/rom-studio/ (works on iPad, too).
 
 Bring your own ROM: open a legally dumped *Super Mario Bros. (World)* or *Mega Man 3 (USA)* `.nes` file; the page picks the game from the ROM. Nothing from the game is included here; all art, sounds and music are read from the ROM you open, and it never leaves your browser.

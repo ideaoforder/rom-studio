@@ -8,3 +8,4 @@ dev/*_test/
 dev/ipad.png
 __pycache__/
 dev/tz_test.png
+dev/mech_test/

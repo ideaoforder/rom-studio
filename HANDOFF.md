@@ -18,6 +18,10 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
 - **Blocks:** 30 metatile-derived objects at BG CHR (`chr_offset` 0x9010). Tile $24 (sky) is locked. Palettes are `{area}.bg0–bg3` and `{area}.sky`, plus `shimmer` (6 colors at 0x9D3; it overwrites bg3 color 1 every 8 frames).
 - **Sounds:** SFX are 6502 code with immediates; `SFX_KNOBS` / `SFX_TABLES` with `nz` flags (bytes the code branches on must stay nonzero). Exported as `byte_patches`.
 - **Music:** a JS 6502 emulator runs the real SoundEngine ($F2D0), plus a 2A03 synth (`renderApu`). `decodeMusic` → patterns → `compileMusic` (stream sharing, 46 pack orders) into the 1,523-byte region $F90D–$FEFF. Exported as `byte_ranges` + `music.json`.
+- **Mechanics** (`profile.mechanics`, tab `#viewMech`): knobs are `toggle` (hex patches), `percent` (scale ROM bytes `bytes:[{offset,n,mode:mul|div|sqrt,signed,min,max,skip}]` or 16-bit `words:[{lo,hi,mode}]`; `max_value` = set to max) and `number`. `mechPatches()` derives byte edits from the ROM's own values; saved as `config.mechanics` and as `byte_patches` labeled `mechanics` (Ruby applies them; reopen rebuilds from `config.mechanics`). Presets in `mechanics_presets`.
+  - SMB: invincible `0x593C` A9 01 EA (InjurePlayer's timer check always "still invincible"); infinite lives `0x11E9` AD 5A 07 (DEC→LDA keeps the BPL); flap `0x34A2` EA EA (mid-air jumps allowed via the swim path); jump = JumpMForceData `0x3434`×5 ÷ factor; gravity = FallMForceData `0x343B`×5; speed = MaxRight/Left `0x3453`/`0x3450`; grip = FrictionData `0x3457`; Bowser HP operand `0x457C`.
+  - MM3: invincible = RTS at check_player_hit (`0x380A7`); ammo = weapon_cost `0x3DF2B`×12 → 0; power = 9 damage tables `0x14110` (bank 0A $A100, 256 each, skip 0/$58, max 28); speed = 5 walk sites ($014C) + slide ($0280) in bank 1E; jump = $04E5 at `0x3CEC4/0x3CEC9` (×√h); gravity = `$40` at `0x3C8FA`, `0x3CD5C`, `0x606A` (player only; enemies use $55).
+  - Verified in cynes by `dev/test_mechanics.py`: jump px, top speed, accel frames, flap rise, surviving the first goomba / keeping lives, MM3 jump/walk/health/ammo, one-hit tables, Ruby parity + round trip.
 - **Tile inspector** (right panel, `TZ`): hovering a frame shows a 3×3-tile zoom around that tile; the **Tile** tool (T, default on the Blocks tab) pins it, and painting there calls the same `setObjPixel` as the frames. ◀ ▶ step through a frame's tiles.
 - **Export:** `downloadProject()` → zip of `parts.png/json`, `rig.yml`, `objects.png/json`, `profile.json`, `config.json`, `music.json`, `smb.nes`, `smb_hacked.nes/.ips`. Each piece is built in `tryPart()`. On failure it still saves, with `backup.json` inside; total failure opens the rescue dialog (`#rescueDlg`: save or copy `smb-skin-backup/1` JSON). **Open project…** accepts zips, backup JSON, or the raw `snap()` JSON.
 - **PNG output:** `canvasPng()` uses `toBlob`, falling back to `encodePng()` (stored zlib), because some views return null from `toBlob`. That was the 2026-10-20 download bug.
@@ -53,7 +57,7 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
 
 ```sh
 cd dev && npm install                    # js-yaml for the page's YAML loader
-pip install playwright py65 pillow lupa  # lupa only for test_capture.py
+pip install playwright py65 pillow lupa cynes  # lupa only for test_capture.py; cynes = NES emulator for mechanics/MM3 checks
 export SMB_ROM="/path/to/Super Mario Bros. (World).nes"   # never commit it
 ./run_all.sh
 ```
