@@ -2875,8 +2875,19 @@ function drawObjFrames() {
 // ---- tile inspector: a zoomed 3x3-tile window around one slot of a frame; painting here edits the real tiles
 const TZ = { fn: null, slot: null, pinned: false };
 const tzc = $("#tzoom"), tzctx = tzc.getContext("2d"), TZ_SPAN = 24, TZ_Z = 10;
+function slotPalId(o, q) { // which palette the game draws this tile with
+  if (q.pal == null || q.pal === "*") return objPalId(o);
+  return typeof q.pal === "string" ? q.pal : palIdFor(o, q.pal);
+}
+function selectTilePalette() {
+  const o = curObj(); if (!o || !TZ.slot) return;
+  const id = slotPalId(o, TZ.slot);
+  if (!S.spritePals[id] || !palRows(o).some(r => r.id === id) || S.ov.slotId === id) return;
+  S.ov.slotId = id; S.ov.slot = 0; renderObjPalette(); renderObjSwatches();
+}
 function inspect(fn, slot, pin) {
   if (pin) TZ.pinned = true;
+  if (pin) { TZ.fn = fn; TZ.slot = slot; selectTilePalette(); }
   if (TZ.fn === fn && TZ.slot === slot && !pin) return;
   TZ.fn = fn; TZ.slot = slot; drawInspector();
 }
@@ -2902,7 +2913,8 @@ function drawInspector() {
   const t = (TZ.slot.off - S.profile.rom.chr_offset) / 16;
   $("#hTileZ").textContent = `Tile $${hex2(t & 0xFF)}`;
   $("#tzHint").textContent = TZ.pinned ? "editing" : "hover";
-  $("#tzInfo").textContent = describeTile(TZ.slot.off) + (TZ.pinned ? "" : " · click it with Tile (T) to edit here");
+  const pid = slotPalId(o, TZ.slot), plabel = (S.profile.palettes[pid] || {}).label || pid;
+  $("#tzInfo").textContent = describeTile(TZ.slot.off) + ` · palette: ${plabel}` + (TZ.pinned ? "" : " · click it with Tile (T) to edit here");
 }
 function tzPos(e) { const r = tzc.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / r.width * TZ_SPAN), Math.floor((e.clientY - r.top) / r.height * TZ_SPAN)]; }
 let tzDown = false, tzVal = 1;
@@ -2927,7 +2939,7 @@ $("#tzDone").onclick = () => { TZ.pinned = false; drawInspector(); };
 function tzStep(dir) {
   const f = tzFrame(); if (!f) return;
   const list = f.slots.filter(Boolean), i = list.indexOf(TZ.slot);
-  TZ.slot = list[(i + dir + list.length) % list.length]; S.ov.hoverOff = TZ.slot.off; drawObjFrames();
+  TZ.slot = list[(i + dir + list.length) % list.length]; S.ov.hoverOff = TZ.slot.off; selectTilePalette(); drawObjFrames();
 }
 $("#tzPrev").onclick = () => tzStep(-1); $("#tzNext").onclick = () => tzStep(1);
 function slotAt(f, x, y) { // topmost slot with an opaque pixel here, else the topmost slot covering it
@@ -3004,7 +3016,8 @@ function objChanged(light) {
 }
 function renderObjSwatches() {
   const box = $("#oswatches"); box.replaceChildren();
-  const colors = objColors(curObj(), S.ov.variant);
+  const sel = S.ov.slotId && S.spritePals[S.ov.slotId], meta = S.profile.palettes[S.ov.slotId] || {};
+  const colors = sel && sel.length === 3 && !meta.rotate ? [null, ...sel.map(rgbOf)] : objColors(curObj(), S.ov.variant); // paint in the palette you're looking at
   for (let v = 0; v <= 3; v++) {
     const b = el("button", { type: "button", class: "sw" + (v === 0 ? " erase" : ""), "aria-pressed": String(S.color === v), "aria-label": v === 0 ? "Transparent" : `Color ${v}`, onclick: () => setColor(v) }, el("span", { class: "k" }, String(v)));
     if (v) b.style.background = css(colors[v]);
@@ -3038,7 +3051,7 @@ function renderObjPalette() {
       const locked = r.locked.includes(i);
       const b = el("button", { type: "button", class: "slot" + (locked ? " locked" : ""), disabled: locked ? "" : null, title: locked ? "The game replaces this color with the shimmer colors below" : null,
         "aria-pressed": String(S.ov.slotId === r.id && S.ov.slot === i), "aria-label": `${r.label} color ${i + 1}, $${h}${locked ? ", set by shimmer" : ""}`,
-        onclick: () => { S.ov.slotId = r.id; S.ov.slot = i; renderObjPalette(); } }, locked ? "✶" : h);
+        onclick: () => { S.ov.slotId = r.id; S.ov.slot = i; renderObjPalette(); renderObjSwatches(); } }, locked ? "✶" : h);
       b.style.background = css(rgbOf(locked ? (shimmerAt(0) || h) : h)); line.append(b);
     });
     slots.append(line);
