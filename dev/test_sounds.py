@@ -42,13 +42,13 @@ with sync_playwright() as p:
     pg.click("#sfxPlay"); pg.wait_for_timeout(300)
     pg.screenshot(path=f"{TD}/sounds.png", full_page=True)
     pf_edit = page_frames(pg)
-    with pg.expect_download() as d: pg.click("#btnSave")
+    with pg.expect_download() as d: pg.click("#btnSave"); pg.click("#dlGo")
     z = f"{TD}/p.zip"; d.value.save_as(z); zipfile.ZipFile(z).extractall(f"{TD}/x")
     cfg = json.load(open(f"{TD}/x/config.json")); print("config byte_patches:", len(cfg.get("byte_patches", [])))
-    js_nes = open(f"{TD}/x/smb_hacked.nes", "rb").read()
+    js_nes = open(f"{TD}/x/super-mario-bros-hack.nes", "rb").read()
     r = subprocess.run(["ruby", f"{REPO}/tools/smb_patcher.rb", "build", f"{TD}/x/config.json"], capture_output=True, text=True)
     print("ruby:", [l for l in r.stdout.splitlines() if "byte patches" in l], r.stderr[-300:])
-    rb_nes = open(f"{TD}/x/smb_hacked.nes", "rb").read()
+    rb_nes = open(f"{TD}/x/super-mario-bros-hack.nes", "rb").read()
     print("JS ROM == Ruby ROM:", js_nes == rb_nes)
     real = {k: T.run(bytearray(rb_nes), k) for k in IDS}
     bad = [k for k in IDS if real[k] != pf_edit[k]]
@@ -56,7 +56,7 @@ with sync_playwright() as p:
     # reopen
     p2 = ctx.new_page(); p2.add_init_script("try{localStorage.clear()}catch(e){}"); p2.on("pageerror", lambda e: errors.append("p2 " + str(e)))
     p2.goto(f"file://{TD}/page.html"); p2.wait_for_timeout(400); p2.set_input_files("#fProj", z); p2.wait_for_timeout(700)
-    with p2.expect_download() as d: p2.click("#btnSave")
+    with p2.expect_download() as d: p2.click("#btnSave"); p2.click("#dlGo")
     z2 = f"{TD}/p2.zip"; d.value.save_as(z2)
     A, B = zipfile.ZipFile(z), zipfile.ZipFile(z2)
     print("reopen roundtrip identical:", sorted(A.namelist()) == sorted(B.namelist()) and all(A.read(n) == B.read(n) for n in A.namelist()))

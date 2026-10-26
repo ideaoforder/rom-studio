@@ -14,13 +14,13 @@ def build(pw, rom, settings, tag):
     pg.add_init_script("try{localStorage.clear()}catch(e){}")
     pg.goto(f"file://{REPO}/index.html"); pg.wait_for_timeout(500); pg.set_input_files("#fRom", rom); pg.wait_for_timeout(600)
     pg.evaluate("(m) => { S.mech = m; persist(); }", settings)
-    with pg.expect_download() as d: pg.click("#btnSave")
+    with pg.expect_download() as d: pg.click("#btnSave"); pg.click("#dlGo")
     z1 = f"{T}/{tag}.zip"; d.value.save_as(z1); x = f"{T}/{tag}"; zipfile.ZipFile(z1).extractall(x)
-    name = [n for n in os.listdir(x) if n.endswith("_hacked.nes")][0]; js = open(f"{x}/{name}", "rb").read()
+    name = json.load(open(f"{x}/config.json"))["output"]; js = open(f"{x}/{name}", "rb").read()
     subprocess.run(["ruby", f"{REPO}/tools/smb_patcher.rb", "build", f"{x}/config.json"], capture_output=True, check=True)
     parity = open(f"{x}/{name}", "rb").read() == js
     pg2 = ctx.new_page(); pg2.goto(f"file://{REPO}/index.html"); pg2.wait_for_timeout(500); pg2.set_input_files("#fProj", z1); pg2.wait_for_timeout(900)
-    with pg2.expect_download() as d: pg2.click("#btnSave")
+    with pg2.expect_download() as d: pg2.click("#btnSave"); pg2.click("#dlGo")
     z2 = f"{T}/{tag}_re.zip"; d.value.save_as(z2)
     same = {n: zipfile.ZipFile(z1).read(n) for n in zipfile.ZipFile(z1).namelist()} == {n: zipfile.ZipFile(z2).read(n) for n in zipfile.ZipFile(z2).namelist()}
     ctx.close(); path = f"{T}/{tag}.nes"; open(path, "wb").write(js)

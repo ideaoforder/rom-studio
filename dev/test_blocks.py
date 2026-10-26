@@ -60,12 +60,12 @@ with sync_playwright() as p:
     print("tile info:", pg.text_content("#tileInfo")[:90])
     pg.click("#segArea button >> nth=2"); pg.wait_for_timeout(150)  # underground bricks
     pg.screenshot(path=f"{T}/brick_ug.png", full_page=True)
-    with pg.expect_download() as d: pg.click("#btnSave")
+    with pg.expect_download() as d: pg.click("#btnSave"); pg.click("#dlGo")
     z1 = f"{T}/p1.zip"; d.value.save_as(z1); zipfile.ZipFile(z1).extractall(f"{T}/x")
-    js = open(f"{T}/x/smb_hacked.nes", "rb").read()
+    js = open(f"{T}/x/super-mario-bros-hack.nes", "rb").read()
     r = subprocess.run(["ruby", f"{REPO}/tools/smb_patcher.rb", "build", f"{T}/x/config.json"], capture_output=True, text=True)
     print("ruby:", r.returncode, [l for l in r.stdout.splitlines() if l.startswith(("objects", "sprite"))], r.stderr[-300:])
-    rb = open(f"{T}/x/smb_hacked.nes", "rb").read()
+    rb = open(f"{T}/x/super-mario-bros-hack.nes", "rb").read()
     t47 = 0x9010 + 0x47 * 16
     diff = [i for i in range(len(rom)) if rom[i] != rb[i]]
     print("JS == Ruby:", js == rb, "| brick tile $47 changed:", rom[t47:t47+16] != rb[t47:t47+16],
@@ -73,7 +73,7 @@ with sync_playwright() as p:
     # reopen round trip
     pg.evaluate("try{localStorage.clear()}catch(e){}"); pg.reload(); pg.wait_for_timeout(500)
     pg.set_input_files("#fProj", z1); pg.wait_for_timeout(800)
-    with pg.expect_download() as d: pg.click("#btnSave")
+    with pg.expect_download() as d: pg.click("#btnSave"); pg.click("#dlGo")
     z2 = f"{T}/p2.zip"; d.value.save_as(z2)
     a, c = zipmap(z1), zipmap(z2)
     print("reopen round trip identical:", a == c, [k for k in a if a.get(k) != c.get(k)])

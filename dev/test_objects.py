@@ -30,11 +30,11 @@ def route(ctx):
 def ruby_compare(zpath, tag):
     d = f"{T}/{tag}"; shutil.rmtree(d, ignore_errors=True); os.makedirs(d)
     z = zipfile.ZipFile(zpath); z.extractall(d)
-    js_nes, js_ips = z.read("smb_hacked.nes"), z.read("smb_hacked.ips")
+    js_nes, js_ips = z.read("super-mario-bros-hack.nes"), z.read("super-mario-bros-hack.ips")
     r = subprocess.run(["ruby", f"{REPO}/tools/smb_patcher.rb", "build", f"{d}/config.json"], capture_output=True, text=True)
     if r.returncode: print(r.stdout, r.stderr); raise SystemExit("ruby failed")
     print(f"[{tag}] ruby:", " | ".join(l for l in r.stdout.splitlines() if l.startswith(("frames:", "objects:"))))
-    print(f"[{tag}] JS ROM == Ruby ROM: {open(f'{d}/smb_hacked.nes','rb').read() == js_nes}   IPS equal: {open(f'{d}/smb_hacked.ips','rb').read() == js_ips}")
+    print(f"[{tag}] JS ROM == Ruby ROM: {open(f'{d}/super-mario-bros-hack.nes','rb').read() == js_nes}   IPS equal: {open(f'{d}/super-mario-bros-hack.ips','rb').read() == js_ips}")
     return js_nes
 
 with sync_playwright() as p:
@@ -91,7 +91,7 @@ with sync_playwright() as p:
     page.wait_for_timeout(300)
     page.screenshot(path=f"{T}/objects_fireball.png", full_page=True)
 
-    with page.expect_download() as d: page.click("#btnSave")
+    with page.expect_download() as d: page.click("#btnSave"); page.click("#dlGo")
     z1 = f"{T}/proj.zip"; d.value.save_as(z1)
     print("zip:", sorted(zipfile.ZipFile(z1).namelist()))
     built = ruby_compare(z1, "objects")
@@ -103,7 +103,7 @@ with sync_playwright() as p:
     p2.on("pageerror", lambda e: errors.append("pageerror2: " + str(e)))
     p2.goto("file://" + page_path); p2.wait_for_timeout(500)
     p2.set_input_files("#fProj", z1); p2.wait_for_timeout(800)
-    with p2.expect_download() as d: p2.click("#btnSave")
+    with p2.expect_download() as d: p2.click("#btnSave"); p2.click("#dlGo")
     z2 = f"{T}/reopen.zip"; d.value.save_as(z2)
     A, B = zipfile.ZipFile(z1), zipfile.ZipFile(z2)
     print("reopen roundtrip identical:", all(A.read(n) == B.read(n) for n in A.namelist()) and sorted(A.namelist()) == sorted(B.namelist()))

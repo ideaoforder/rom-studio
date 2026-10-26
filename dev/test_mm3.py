@@ -57,13 +57,13 @@ with sync_playwright() as p:
        S.spritePals['st05.bg0'] = ['30', '16', '06']; S.palEdited['st05.bg0'] = true; S.spritePals['st05.sky'] = ['01']; S.palEdited['st05.sky'] = true; return q.off; })()""")
     links = dict((int(k), v) for k, v in pg.evaluate("[...chrLinks()]"))
     print("linked copies for the painted tile:", len(links.get(tile_off, [])), "| tiles with copies:", len(links))
-    with pg.expect_download() as d: pg.click("#btnSave")
+    with pg.expect_download() as d: pg.click("#btnSave"); pg.click("#dlGo")
     z1 = f"{T}/p1.zip"; d.value.save_as(z1); zipfile.ZipFile(z1).extractall(f"{T}/x")
     names = zipfile.ZipFile(z1).namelist(); print("zip:", sorted(names))
-    js = open(f"{T}/x/game_hacked.nes", "rb").read()
+    js = open(f"{T}/x/mega-man-3-hack.nes", "rb").read()
     r = subprocess.run(["ruby", f"{REPO}/tools/smb_patcher.rb", "build", f"{T}/x/config.json"], capture_output=True, text=True)
     print("ruby:", r.returncode, r.stdout.strip().splitlines()[:2], r.stderr[-300:])
-    rb = open(f"{T}/x/game_hacked.nes", "rb").read()
+    rb = open(f"{T}/x/mega-man-3-hack.nes", "rb").read()
     diff = [i for i in range(len(rom)) if rom[i] != rb[i]]
     mir_ok = all(rb[m:m + 16] == rb[t:t + 16] for t in (tile_off, enemy_off) for m in links.get(t, []))
     print("JS == Ruby:", js == rb, "| bytes changed:", len(diff), "| painted tile changed:", rom[tile_off:tile_off+16] != rb[tile_off:tile_off+16], "| copies follow:", mir_ok)
@@ -74,7 +74,7 @@ with sync_playwright() as p:
     pg2 = ctx.new_page(); pg2.on("pageerror", lambda e: errors.append(str(e)))
     pg2.goto(f"file://{REPO}/index.html"); pg2.wait_for_timeout(500)
     pg2.set_input_files("#fProj", z1); pg2.wait_for_timeout(1000)
-    with pg2.expect_download() as d: pg2.click("#btnSave")
+    with pg2.expect_download() as d: pg2.click("#btnSave"); pg2.click("#dlGo")
     z2 = f"{T}/p2.zip"; d.value.save_as(z2)
     A = {n: zipfile.ZipFile(z1).read(n) for n in names}; B = {n: zipfile.ZipFile(z2).read(n) for n in zipfile.ZipFile(z2).namelist()}
     print("reopen round trip identical:", A == B, [k for k in A if A.get(k) != B.get(k)])
@@ -82,7 +82,7 @@ with sync_playwright() as p:
 try:
     import cynes, numpy as np
     from PIL import Image
-    nes = cynes.NES(f"{T}/x/game_hacked.nes")
+    nes = cynes.NES(f"{T}/x/mega-man-3-hack.nes")
     for n, btn in [(240, 0), (5, cynes.NES_INPUT_START), (180, 0), (5, cynes.NES_INPUT_START), (180, 0), (8, cynes.NES_INPUT_UP), (30, 0), (5, cynes.NES_INPUT_START), (1000, 0)]:
         for _ in range(n): nes.controller = btn; f = nes.step(1)
     Image.fromarray(f).resize((512, 480), Image.NEAREST).save(f"{T}/ingame.png")

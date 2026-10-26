@@ -35,7 +35,7 @@ def ruby_build(zpath, tag):
     zipfile.ZipFile(zpath).extractall(d)
     r = subprocess.run(["ruby", f"{REPO}/tools/smb_patcher.rb", "build", f"{d}/config.json"], capture_output=True, text=True)
     if r.returncode: print(r.stdout, r.stderr); raise SystemExit("ruby build failed")
-    # ruby writes smb_hacked.nes over the JS one; keep the JS copy first
+    # ruby writes super-mario-bros-hack.nes over the JS one; keep the JS copy first
     return d, r.stdout
 
 with sync_playwright() as p:
@@ -54,7 +54,7 @@ with sync_playwright() as p:
 
     def download(tag):
         with page.expect_download() as d:
-            page.click("#btnSave")
+            page.click("#btnSave"); page.click("#dlGo")
         path = f"{T}/{tag}.zip"; d.value.save_as(path); return path
 
     # 1. no ROM: project only
@@ -68,9 +68,9 @@ with sync_playwright() as p:
 
     def compare(zpath, tag):
         names = zipfile.ZipFile(zpath).namelist()
-        js_nes = zipfile.ZipFile(zpath).read("smb_hacked.nes"); js_ips = zipfile.ZipFile(zpath).read("smb_hacked.ips")
+        js_nes = zipfile.ZipFile(zpath).read("super-mario-bros-hack.nes"); js_ips = zipfile.ZipFile(zpath).read("super-mario-bros-hack.ips")
         d, out = ruby_build(zpath, tag)
-        rb_nes = open(f"{d}/smb_hacked.nes", "rb").read(); rb_ips = open(f"{d}/smb_hacked.ips", "rb").read()
+        rb_nes = open(f"{d}/super-mario-bros-hack.nes", "rb").read(); rb_ips = open(f"{d}/super-mario-bros-hack.ips", "rb").read()
         print(f"[{tag}] files={sorted(names)}")
         print(f"[{tag}] ruby: " + " | ".join(l for l in out.splitlines() if "frames:" in l))
         print(f"[{tag}] JS ROM == Ruby ROM: {js_nes == rb_nes}   JS IPS == Ruby IPS: {js_ips == rb_ips}   changed bytes: {sum(a != c for a, c in zip(open(ROM,'rb').read(), js_nes))}")
@@ -103,7 +103,7 @@ with sync_playwright() as p:
     page2.goto("file://" + wrapped); page2.wait_for_timeout(500)
     page2.set_input_files("#fProj", z3); page2.wait_for_timeout(800)
     with page2.expect_download() as d:
-        page2.click("#btnSave")
+        page2.click("#btnSave"); page2.click("#dlGo")
     z4 = f"{T}/reopen.zip"; d.value.save_as(z4)
     A, B = zipfile.ZipFile(z3), zipfile.ZipFile(z4)
     same = {n: A.read(n) == B.read(n) for n in A.namelist()}

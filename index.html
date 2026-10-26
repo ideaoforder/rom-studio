@@ -325,6 +325,13 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line)
       <div id="snapList" class="snaplist"></div>
       <div class="tools"><span class="spacer"></span><button class="btn" type="button" id="snapClose">Close</button></div>
     </dialog>
+    <dialog id="dlDlg" class="rescue" aria-labelledby="dlH">
+      <h2 id="dlH">Download</h2>
+      <label class="help" for="dlName">Name your hack</label>
+      <div class="tools"><input id="dlName" type="text" maxlength="60" style="flex:1;min-width:0;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:var(--r)"></div>
+      <p class="help mono" id="dlFiles"></p>
+      <div class="tools"><button class="btn primary" type="button" id="dlGo">Download</button><span class="spacer"></span><button class="btn" type="button" id="dlCancel">Cancel</button></div>
+    </dialog>
     <dialog id="overDlg" class="rescue" aria-labelledby="overH">
       <h2 id="overH">Start over?</h2>
       <p id="overText">This clears every edit for this game.</p>
@@ -1393,13 +1400,17 @@ async function saveFile(filename, blob) {
   const url = URL.createObjectURL(blob), a = el("a", { href: url, download: filename });
   document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
 }
-async function downloadProject() {
+function gameSlug(p = S.profile) { return (p.game || "game").replace(/\s*\(.*\)\s*$/, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""); }
+function defaultProjectName() { return S.projectName || `${gameSlug()}-hack`; }
+function fileSafe(name) { return (name || "").trim().replace(/[\\/:*?"<>|]+/g, "").replace(/\s+/g, "-").replace(/^[.-]+/, "").slice(0, 60); }
+async function downloadProject(name) {
+  const base = fileSafe(name) || fileSafe(defaultProjectName()) || "rom-hack";
   if (!S.profile) loadProfile(SMB_PROFILE);
   const failed = [], tryPart = async (what, fn) => { try { return await fn(); } catch (e) { console.error(what, e); failed.push(`${what}: ${e.message || e}`); return null; } };
   const enc = new TextEncoder(), smb = S.profile.player === "smb";
   if (smb && S.musicEdited && S.music) { const r = musicCompile(); if (r && r.errors.length) { toast("Music won't fit or has a problem: " + r.errors[0]); return; } } // a guard, not a failure
-  const config = { input: "game.nes", output: "game_hacked.nes", ips: "game_hacked.ips", profile: "profile.json" };
-  if (smb) Object.assign(config, { input: "smb.nes", output: "smb_hacked.nes", ips: "smb_hacked.ips", rig: "rig.yml", frames: "frames.png", palettes: S.palettes, names: S.names });
+  const config = { name: (name || "").trim() || defaultProjectName(), input: "original.nes", output: `${base}.nes`, ips: `${base}.ips`, profile: "profile.json" };
+  if (smb) Object.assign(config, { rig: "rig.yml", frames: "frames.png", palettes: S.palettes, names: S.names });
   const entries = [];
   if (smb) await tryPart("player art", async () => {
     const [png, pjson] = await partsPng(), rig = emitRig(S.rig);
@@ -1429,14 +1440,14 @@ async function downloadProject() {
   if (failed.length) { // never lose work: ship what we have plus a full backup, and say what's missing
     entries.push({ name: "backup.json", data: enc.encode(backupJson()) });
   }
-  await saveFile(smb ? "smb_skin_project.zip" : "sprite_project.zip", zip(entries));
+  await saveFile(`${base}.zip`, zip(entries));
   if (failed.length) toast(`Saved, with a backup.json inside. Couldn't build: ${failed.join("; ")}`);
 }
 
 // ======================================================================= history + persistence
 const undoStack = [], redoStack = [];
 let lastCk = { key: "", t: 0 };
-const snap = () => JSON.stringify({ game: S.profile ? S.profile.game : undefined, rig: S.rig, parts: S.parts, palettes: S.palettes, names: S.names, chrEdits: S.chrEdits, spritePals: S.spritePals, spritePalsEdited: S.spritePalsEdited, palEdited: S.palEdited, mech: S.mech, sfxEdits: S.sfxEdits, music: S.musicEdited ? S.music : null, musicEdited: S.musicEdited });
+const snap = () => JSON.stringify({ game: S.profile ? S.profile.game : undefined, projectName: S.projectName || undefined, rig: S.rig, parts: S.parts, palettes: S.palettes, names: S.names, chrEdits: S.chrEdits, spritePals: S.spritePals, spritePalsEdited: S.spritePalsEdited, palEdited: S.palEdited, mech: S.mech, sfxEdits: S.sfxEdits, music: S.musicEdited ? S.music : null, musicEdited: S.musicEdited });
 function checkpoint(key) {
   const now = performance.now();
   if (key && key === lastCk.key && now - lastCk.t < 1200) { lastCk.t = now; return; }
@@ -1445,6 +1456,7 @@ function checkpoint(key) {
 }
 function restore(json) {
   const o = JSON.parse(json);
+  S.projectName = o.projectName || null;
   Object.assign(S, { rig: o.rig, parts: o.parts, palettes: o.palettes, names: o.names, chrEdits: o.chrEdits || {}, spritePals: o.spritePals || S.spritePals, spritePalsEdited: !!o.spritePalsEdited, palEdited: o.palEdited || (o.spritePalsEdited ? Object.fromEntries(Object.keys(o.spritePals || {}).map(k => [k, true])) : {}), mech: o.mech || {}, sfxEdits: o.sfxEdits || {}, musicEdited: !!o.musicEdited, music: o.musicEdited ? o.music : (MU.orig ? JSON.parse(JSON.stringify(MU.orig)) : null) });
   fullRefresh();
 }
@@ -1465,7 +1477,7 @@ function saveSnapshot(name) {
   const label = (name || "").trim() || `${S.profile.game.replace(/ \(.*\)$/, "")} · ${when.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
   list.unshift({ id: when.getTime(), name: label, game: S.profile.game, when: when.toISOString(), state: JSON.parse(snap()) });
   while (list.length > 30) list.pop();
-  const ok = storeSnaps(list); if (ok) toast(`Saved "${label}"`); return ok;
+  const ok = storeSnaps(list); if (ok) { toast(`Saved "${label}"`); if ((name || "").trim()) { S.projectName = label; persist(); } } return ok;
 }
 function renderSnaps() {
   const box = $("#snapList"); box.replaceChildren();
@@ -1475,14 +1487,14 @@ function renderSnaps() {
     const when = new Date(sn.when).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
     box.append(el("div", { class: "snaprow" },
       el("span", { class: "sname" }, sn.name, el("small", {}, `${sn.game} · ${when}`)),
-      el("button", { type: "button", class: "btn", onclick: () => { checkpoint(""); restoreBackup({ state: { ...sn.state, game: sn.game } }); closeDlg("snapDlg"); toast(`Back to "${sn.name}" (Undo to return)`); } }, "Go back to this"),
+      el("button", { type: "button", class: "btn", onclick: () => { checkpoint(""); restoreBackup({ state: { ...sn.state, game: sn.game, projectName: sn.name } }); closeDlg("snapDlg"); toast(`Back to "${sn.name}" (Undo to return)`); } }, "Go back to this"),
       el("button", { type: "button", class: "btn", onclick: () => saveFile(`${sn.name.replace(/[^a-z0-9]+/gi, "_")}.json`, new Blob([JSON.stringify({ format: "smb-skin-backup/1", game: sn.game, saved: sn.when, state: sn.state })], { type: "application/json" })) }, "Download"),
       el("button", { type: "button", class: "btn", onclick: () => { storeSnaps(loadSnaps().filter(x => x.id !== sn.id)); renderSnaps(); } }, "Delete")));
   }
 }
 function startOver() {
   checkpoint("");
-  Object.assign(S, { chrEdits: {}, palEdited: {}, spritePalsEdited: false, mech: {}, sfxEdits: {}, musicEdited: false });
+  Object.assign(S, { chrEdits: {}, palEdited: {}, spritePalsEdited: false, mech: {}, sfxEdits: {}, musicEdited: false, projectName: null });
   if (MU.orig) S.music = JSON.parse(JSON.stringify(MU.orig));
   if (S.rom) for (const [id, m] of Object.entries(S.profile.palettes || {})) S.spritePals[id] = Array.from(S.rom.slice(m.offset, m.offset + (m.count || 3)), hex2);
   if (S.profile.player === "smb") { try { bootSample(); } catch (e) { /* rig library unavailable */ } }
@@ -1926,6 +1938,7 @@ let pendingSwitch = null;
 function hasGameEdits() { return Object.keys(S.chrEdits).length || Object.keys(S.mech).length || Object.keys(S.palEdited).length || Object.keys(S.sfxEdits).length || S.musicEdited; }
 function switchGame(p) {
   checkpoint("");
+  S.projectName = null;
   Object.assign(S, { chrEdits: {}, palEdited: {}, mech: {}, spritePalsEdited: false, sfxEdits: {}, music: null, musicEdited: false, rom: null });
   S.ov = { ...S.ov, sel: 0, area: null, variant: 0, clip: null, slot: 0, slotId: null };
   loadProfile(p);
@@ -1976,7 +1989,7 @@ async function openProjectFiles(files) {
   const cfg = bag["config.json"] ? JSON.parse(dec.decode(bag["config.json"])) : null;
   const profName = Object.keys(bag).find(n => /profile\.json$/i.test(n));
   if (profName) { loadProfile(JSON.parse(dec.decode(bag[profName]))); did.push("profile"); }
-  const nesName = (cfg && bag[cfg.input] && cfg.input) || Object.keys(bag).find(n => /^smb\.nes$/i.test(n)) || Object.keys(bag).find(n => /\.nes$/i.test(n) && !/hacked/i.test(n));
+  const nesName = (cfg && bag[cfg.input] && cfg.input) || Object.keys(bag).find(n => /^(original|smb)\.nes$/i.test(n)) || Object.keys(bag).find(n => /\.nes$/i.test(n) && !/hacked/i.test(n));
   if (nesName && setRom(bag[nesName], nesName)) did.push("ROM");
   if (cfg && cfg.sprite_palettes) {
     for (const [id, p] of Object.entries(cfg.sprite_palettes)) {
@@ -1985,6 +1998,7 @@ async function openProjectFiles(files) {
     }
     S.spritePalsEdited = true;
   }
+  if (cfg && cfg.name) S.projectName = String(cfg.name).slice(0, 60);
   if (cfg && cfg.mechanics && typeof cfg.mechanics === "object") { S.mech = { ...cfg.mechanics }; did.push("mechanics"); }
   if (cfg && Array.isArray(cfg.byte_patches) && cfg.byte_patches.some(p => p.label !== "mechanics")) {
     for (const p of cfg.byte_patches) {
@@ -2062,7 +2076,16 @@ for (const n of [1, 2]) $("#fSkin" + n).onchange = async e => {
   try { const img = await readImage(f); if (!isSkin(img)) { toast(`Skins are 64×64 (or 64×32) PNGs; this one is ${img.w}×${img.h}.`); return; } useSkin(n, img); }
   catch (err) { toast("Couldn't read that image."); }
 };
-$("#btnSave").onclick = () => downloadProject().catch(e => { console.error(e); rescue(e); });
+$("#btnSave").onclick = () => { $("#dlName").value = defaultProjectName(); dlPreview(); openDlg("dlDlg"); setTimeout(() => $("#dlName").select(), 0); };
+function dlPreview() { const b = fileSafe($("#dlName").value) || "rom-hack"; $("#dlFiles").textContent = `${b}.zip · inside: ${b}.nes (play this) and ${b}.ips`; }
+$("#dlName").addEventListener("input", dlPreview);
+$("#dlName").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); $("#dlGo").click(); } });
+$("#dlGo").onclick = () => {
+  const name = $("#dlName").value.trim(); closeDlg("dlDlg");
+  if (name) { S.projectName = name; persist(); }
+  downloadProject(name).catch(e => { console.error(e); rescue(e); });
+};
+$("#dlCancel").onclick = () => closeDlg("dlDlg");
 function backupJson() { return JSON.stringify({ format: "smb-skin-backup/1", game: (S.profile || {}).game, saved: new Date().toISOString(), state: JSON.parse(snap()) }); }
 function rescue(err) {
   $("#rescueH").textContent = "The project zip couldn't be built";
@@ -4210,7 +4233,7 @@ function bootSample() {
   try {
     const saved = localStorage.getItem(STORE_KEY);
     if (saved) {
-      const o = JSON.parse(saved); validateRig(o.rig);
+      const o = JSON.parse(saved); validateRig(o.rig); S.projectName = o.projectName || null;
       Object.assign(S, { rig: o.rig, parts: o.parts, palettes: o.palettes, names: o.names, chrEdits: o.chrEdits || {}, spritePals: o.spritePals || {}, spritePalsEdited: !!o.spritePalsEdited, palEdited: o.palEdited || (o.spritePalsEdited ? Object.fromEntries(Object.keys(o.spritePals || {}).map(k => [k, true])) : {}), mech: o.mech || {}, sfxEdits: o.sfxEdits || {}, musicEdited: !!(o.musicEdited && o.music), music: o.musicEdited ? o.music : null });
       restored = true;
     }

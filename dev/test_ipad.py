@@ -14,7 +14,7 @@ with sync_playwright() as p:
     bb = pg.locator("#painter").bounding_box(); pg.touchscreen.tap(bb["x"] + 30, bb["y"] + bb["height"] - 30)
     print("tap painted:", before != pg.evaluate("JSON.stringify(S.parts.head)"))
     pg.set_input_files("#fRom", ROM_PATH); pg.wait_for_timeout(300)
-    with pg.expect_download() as d: pg.click("#btnSave")
+    with pg.expect_download() as d: pg.click("#btnSave"); pg.click("#dlGo")
     print("download:", d.value.suggested_filename)
     pg.screenshot(path=f"{S}/ipad.png")
     b.close()

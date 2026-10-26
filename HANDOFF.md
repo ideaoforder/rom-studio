@@ -26,7 +26,7 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
   - Verified in cynes by `dev/test_mechanics.py`: jump px, top speed, accel frames, flap rise, surviving the first goomba / keeping lives, MM3 jump/walk/health/ammo, one-hit tables, Ruby parity + round trip.
 - **Start over / Snapshots** (header): `startOver()` clears the current game's edits (SMB also resets to the sample character; Undo restores). Snapshots are `{name, game, when, state: snap()}` in localStorage `rom-studio-snapshots` (max 30); restoring goes through `restoreBackup()`, which switches games if needed; each can be downloaded as a backup JSON that Open project reads.
 - **Tile inspector** (right panel, `TZ`): hovering a frame shows a 3×3-tile zoom around that tile; the **Tile** tool (T, default on the Blocks tab) pins it, and painting there calls the same `setObjPixel` as the frames. ◀ ▶ step through a frame's tiles.
-- **Export:** `downloadProject()` → zip of `parts.png/json`, `rig.yml`, `objects.png/json`, `profile.json`, `config.json`, `music.json`, `smb.nes`, `smb_hacked.nes/.ips`. Each piece is built in `tryPart()`. On failure it still saves, with `backup.json` inside; total failure opens the rescue dialog (`#rescueDlg`: save or copy `smb-skin-backup/1` JSON). **Open project…** accepts zips, backup JSON, or the raw `snap()` JSON.
+- **Export:** `downloadProject()` → zip of `parts.png/json`, `rig.yml`, `objects.png/json`, `profile.json`, `config.json`, `music.json`, `original.nes` (untouched input), `{name}.nes/.ips`. **Download** first asks for a name (`#dlDlg`): it defaults to `S.projectName` (the current snapshot's name, an opened project's `config.name`, or the last download name), else `{game}-hack` (`super-mario-bros-hack`, `mega-man-3-hack`). `fileSafe()` makes it the zip, ROM and IPS base name. Each piece is built in `tryPart()`. On failure it still saves, with `backup.json` inside; total failure opens the rescue dialog (`#rescueDlg`: save or copy `smb-skin-backup/1` JSON). **Open project…** accepts zips, backup JSON, or the raw `snap()` JSON.
 - **PNG output:** `canvasPng()` uses `toBlob`, falling back to `encodePng()` (stored zlib), because some views return null from `toBlob`. That was the 2026-10-20 download bug.
 
 ## Supported games
@@ -51,7 +51,7 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
 
 ## How it's been verified (keep doing this)
 
-1. Browser zip → `ruby tools/smb_patcher.rb build x/config.json` → `smb_hacked.nes` byte-identical to the browser's.
+1. Browser zip → `ruby tools/smb_patcher.rb build x/config.json` → the `output` ROM byte-identical to the browser's.
 2. Reopen the downloaded zip → download again → identical zip.
 3. Sound/music: page model vs py65 running the real ROM engine, register-for-register.
 4. Profile frames vs ROM tables (enemies, power-ups, metatiles).
