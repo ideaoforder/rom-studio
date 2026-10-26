@@ -8,11 +8,11 @@ rom = open(ROM, "rb").read(); T = f"{DEV}/mm3_test"; shutil.rmtree(T, ignore_err
 C = 0x10 + 256 * 1024
 def s8(v): return v - 256 if v > 127 else v
 PRG = lambda b: 0x10 + b * 0x2000
-def frame_model(b, fid):  # independent re-implementation of the renderer at $1FF13B (facing right = no flip)
+def frame_model(b, fid, facing=0):  # independent re-implementation of the renderer at $1FF13B (facing 1 = right: H-flip, offsets index + 1)
     base = PRG(b); p = rom[base + 0x100 + fid] | rom[base + 0x200 + fid] << 8; o = base + p - 0x8000
-    ob = PRG(0x14 if rom[o] & 0x80 else 0x19); idx = rom[o + 1]
+    ob = PRG(0x14 if rom[o] & 0x80 else 0x19); idx = rom[o + 1] + facing
     q = rom[ob + 0x1E00 + idx] | rom[ob + 0x1F00 + idx] << 8; qo = ob + q - 0xA000 - 2
-    return [(rom[o + 2 + 2 * k], rom[o + 3 + 2 * k], s8(rom[qo + 3 + 2 * k]), s8(rom[qo + 2 + 2 * k])) for k in range((rom[o] & 0x7F) + 1)]
+    return [(rom[o + 2 + 2 * k], rom[o + 3 + 2 * k] ^ (0x40 if facing else 0), s8(rom[qo + 3 + 2 * k]), s8(rom[qo + 2 + 2 * k])) for k in range((rom[o] & 0x7F) + 1)]
 errors = []
 with sync_playwright() as p:
     b = p.chromium.launch(); ctx = b.new_context(accept_downloads=True, viewport={"width": 1400, "height": 1000})
@@ -27,7 +27,7 @@ with sync_playwright() as p:
     fids = {"stand": 10, "walk 1": 7, "jump": 15, "climb top": 6, "slide": 27, "hurt flash": 14}
     ok = True
     for name, fid in fids.items():
-        want = [((f"{t:02X}" + ("h" if a & 0x40 else "") + ("v" if a & 0x80 else "")), dx, dy, a & 3) for (t, a, dx, dy) in frame_model(0x1A, fid)]
+        want = [((f"{t:02X}" + ("h" if a & 0x40 else "") + ("v" if a & 0x80 else "")), dx, dy, a & 3) for (t, a, dx, dy) in frame_model(0x1A, fid, 1)]
         got = [(s[0], s[1], s[2], 0 if s[3] is None else 1) for s in prof["objects"][0]["frames"][name]["sprites"]]
         ok &= want == got
     print("profile frames match the ROM's sprite tables:", ok)
