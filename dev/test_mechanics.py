@@ -67,6 +67,17 @@ def mm3_measure(path):
     nes = mm3_boot(path); nes[0xA3] = 0x9C; nes[0xA0] = 1
     for t in range(200): nes.controller = B if t % 12 < 2 else 0; nes.step(1)
     o["gemini_left"] = nes[0xA3] & 0x1F
+    # Mega Buster: shot speed (px/frame) and most shots alive at once while holding rapid fire
+    nes = mm3_boot(path); last = {}; speeds = []; most = 0
+    for t in range(240):
+        nes.controller = B if t % 6 < 2 else 0; nes.step(1)
+        alive = [sl for sl in (1, 2, 3) if nes[0x300 + sl] & 0x80]; most = max(most, len(alive))
+        for sl in alive:
+            x = nes[0x380 + sl] * 256 + nes[0x360 + sl]
+            if sl in last and 0 < x - last[sl] < 32: speeds.append(x - last[sl])
+            last[sl] = x
+        for sl in set(last) - set(alive): last.pop(sl)
+    o["shot_px_per_frame"] = max(set(speeds), key=speeds.count) if speeds else 0; o["most_shots"] = most
     return o
 with sync_playwright() as p:
     pw = p.chromium.launch()
@@ -82,15 +93,33 @@ with sync_playwright() as p:
               "infinite lives keeps the count": smb["smb_lives"]["lives_lost"] == 0, "Ruby parity + round trip": all(v["ruby"] and v["roundtrip"] for v in smb.values())}
     if MM3:
         mm = {}
-        for tag, st in [("mm3_base", {}), ("mm3_floaty", {"gravity": 50, "jump": 150}), ("mm3_fast", {"speed": 150}), ("mm3_inv", {"invincible": True}), ("mm3_ammo", {"ammo": True, "power": 1000})]:
+        for tag, st in [("mm3_base", {}), ("mm3_floaty", {"gravity": 50, "jump": 150}), ("mm3_fast", {"speed": 150}), ("mm3_inv", {"invincible": True}), ("mm3_ammo", {"ammo": True, "power": 1000}),
+                        ("mm3_weap", {"shotspeed": 150, "w0.shots": 1, "w1.cost": 0, "w1.dmg": 300, "power": 200, "w8.sound": 0x2E, "hitbox": 200})]:
             path, parity, same = build(pw, MM3, st, tag); mm[tag] = mm3_measure(path); mm[tag]["ruby"] = parity; mm[tag]["roundtrip"] = same
         for k, v in mm.items(): print(k, v)
-        b = mm["mm3_base"]; rom = open(f"{T}/mm3_ammo.nes", "rb").read(); orig = open(MM3, "rb").read()
+        b = mm["mm3_base"]; rom = open(f"{T}/mm3_ammo.nes", "rb").read(); orig = open(MM3, "rb").read(); wr = open(f"{T}/mm3_weap.nes", "rb").read()
+        F3 = lambda bank, a: 0x10 + bank * 0x2000 + (a & 0x1FFF)
+        def weap_dmg_ok():  # Gemini table x2 (global) x3 (Gemini), others x2, capped at 28, 0/$58 untouched
+            ok = True
+            for base, mul in [(0xA400, 6), (0xA100, 2), (0xA800, 2)]:
+                for i in range(256):
+                    o0 = orig[F3(0x0A, base) + i]; want = o0 if o0 in (0, 0x58) else min(28, o0 * mul) if base != 0xA800 or o0 * 2 != 0x58 else o0
+                    if base == 0xA400 and o0 not in (0, 0x58): want = min(28, min(28, o0 * 2) * 3)
+                    ok &= wr[F3(0x0A, base) + i] == want
+            return ok
+        def weap_bytes_ok():
+            hb = all(wr[F3(0x1F, 0xFC03) + i] == min(0x60, max(1, orig[F3(0x1F, 0xFC03) + i] * 2)) for i in range(64))
+            return wr[F3(0x1E, 0xD349 + 8)] == 0x2E and hb
         dmg = 0x10 + 0x0A * 0x2000 + 0x100
         checks.update({"MM3 floaty jumps higher": mm["mm3_floaty"]["jump_px"] > b["jump_px"] * 2, "MM3 fast walks farther": mm["mm3_fast"]["walk_px"] > b["walk_px"] * 1.25,
                        "MM3 invincible keeps full health": mm["mm3_inv"]["lowest_health"] == 28 and b["lowest_health"] < 28,
                        "MM3 weapons don't drain": mm["mm3_ammo"]["gemini_left"] == 28 and b["gemini_left"] < 28,
                        "MM3 one-hit damage tables": all((rom[dmg + i] == 28) == (orig[dmg + i] not in (0, 0x58)) for i in range(9 * 256)),
+                       "MM3 shot speed 4 -> 6 px/frame": b["shot_px_per_frame"] == 4 and mm["mm3_weap"]["shot_px_per_frame"] == 6,
+                       "MM3 Mega Buster limited to 1 shot": b["most_shots"] == 3 and mm["mm3_weap"]["most_shots"] == 1,
+                       "MM3 Gemini costs nothing (only Gemini)": mm["mm3_weap"]["gemini_left"] == 28,
+                       "MM3 per-weapon damage compounds with power": weap_dmg_ok(),
+                       "MM3 Spark sound + bigger target boxes": weap_bytes_ok(),
                        "MM3 Ruby parity + round trip": all(v["ruby"] and v["roundtrip"] for v in mm.values())})
     pw.close()
 for k, v in checks.items(): print(("PASS " if v else "FAIL ") + k)
