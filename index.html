@@ -180,6 +180,9 @@ details > summary { cursor: pointer; font-size: 12px; color: var(--muted); }
 .opal-slots { display: flex; flex-direction: column; gap: 6px; }
 .opal-slots .slot { width: 56px; height: 30px; border-radius: var(--r); border: 1px solid var(--line); cursor: pointer; display: flex; align-items: flex-end; justify-content: flex-end; padding: 2px 4px; font-family: var(--f-mono); font-size: 10px; color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000; }
 .rescue { max-width: min(560px, calc(100vw - 32px)); border: 1px solid var(--line); border-radius: var(--r); background: var(--panel); color: inherit; padding: 16px; }
+.snaplist { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; max-height: 50vh; overflow: auto; }
+.snaprow { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--r); padding: 6px 8px; }
+.snaprow .sname { flex: 1; min-width: 140px; } .snaprow .sname small { display: block; opacity: .65; }
 .rescue::backdrop { background: rgba(0,0,0,.45); }
 .rescue textarea { width: 100%; box-sizing: border-box; font: 11px var(--f-mono); margin: 8px 0; }
 .rescue #rescueErr { color: #b3261e; word-break: break-word; }
@@ -310,9 +313,23 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line)
       <button class="btn" id="btnProj" type="button">Open project…</button>
       <button class="btn" id="btnUndo" type="button" title="Undo (Ctrl+Z)">Undo</button>
       <button class="btn" id="btnRedo" type="button" title="Redo (Ctrl+Shift+Z)">Redo</button>
+      <button class="btn" id="btnSnaps" type="button" title="Save and go back to versions of your work">Snapshots</button>
+      <button class="btn" id="btnStartOver" type="button" title="Clear every edit for this game">Start over</button>
       <button class="btn primary" id="btnSave" type="button">Download project .zip</button>
     </div>
     <input type="file" id="fRom" accept=".nes" hidden>
+    <dialog id="snapDlg" class="rescue" aria-labelledby="snapH">
+      <h2 id="snapH">Snapshots</h2>
+      <p class="help">A snapshot saves everything you've made for this game (art, colors, mechanics, sounds, music) so you can come back to it. They're kept in this browser; <b>Download</b> one to keep it anywhere.</p>
+      <div class="tools"><input id="snapName" type="text" maxlength="40" placeholder="Name it (optional)" aria-label="Snapshot name" style="flex:1;min-width:0;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:var(--r)"><button class="btn primary" type="button" id="snapSave">Save snapshot</button></div>
+      <div id="snapList" class="snaplist"></div>
+      <div class="tools"><span class="spacer"></span><button class="btn" type="button" id="snapClose">Close</button></div>
+    </dialog>
+    <dialog id="overDlg" class="rescue" aria-labelledby="overH">
+      <h2 id="overH">Start over?</h2>
+      <p id="overText">This clears every edit for this game.</p>
+      <div class="tools"><button class="btn primary" type="button" id="overSnap">Save a snapshot, then start over</button><button class="btn" type="button" id="overGo">Start over</button><span class="spacer"></span><button class="btn" type="button" id="overCancel">Cancel</button></div>
+    </dialog>
     <dialog id="rescueDlg" class="rescue" aria-labelledby="rescueH">
       <h2 id="rescueH">The project zip couldn't be built</h2>
       <p class="mono" id="rescueErr"></p>
@@ -1437,6 +1454,49 @@ function restoreBackup(j) {
   restore(JSON.stringify(j.state)); persist();
   toast("Backup restored." + (S.rom ? "" : " Open your ROM to see the original art and download the game."));
 }
+// ---- start over + snapshots (kept in this browser's storage; download for anything you want to keep for sure)
+const SNAP_KEY = "rom-studio-snapshots";
+function loadSnaps() { try { return JSON.parse(localStorage.getItem(SNAP_KEY) || "[]"); } catch (e) { return []; } }
+function storeSnaps(list) { try { localStorage.setItem(SNAP_KEY, JSON.stringify(list)); return true; } catch (e) { toast("Browser storage is full or off here. Download the snapshot to keep it."); return false; } }
+function openDlg(id) { const d = $("#" + id); if (d.showModal) d.showModal(); else d.setAttribute("open", ""); }
+function closeDlg(id) { const d = $("#" + id); d.close ? d.close() : d.removeAttribute("open"); }
+function saveSnapshot(name) {
+  const list = loadSnaps(), when = new Date();
+  const label = (name || "").trim() || `${S.profile.game.replace(/ \(.*\)$/, "")} · ${when.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}`;
+  list.unshift({ id: when.getTime(), name: label, game: S.profile.game, when: when.toISOString(), state: JSON.parse(snap()) });
+  while (list.length > 30) list.pop();
+  const ok = storeSnaps(list); if (ok) toast(`Saved "${label}"`); return ok;
+}
+function renderSnaps() {
+  const box = $("#snapList"); box.replaceChildren();
+  const list = loadSnaps();
+  if (!list.length) { box.append(el("p", { class: "help" }, "No snapshots yet.")); return; }
+  for (const sn of list) {
+    const when = new Date(sn.when).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+    box.append(el("div", { class: "snaprow" },
+      el("span", { class: "sname" }, sn.name, el("small", {}, `${sn.game} · ${when}`)),
+      el("button", { type: "button", class: "btn", onclick: () => { checkpoint(""); restoreBackup({ state: { ...sn.state, game: sn.game } }); closeDlg("snapDlg"); toast(`Back to "${sn.name}" (Undo to return)`); } }, "Go back to this"),
+      el("button", { type: "button", class: "btn", onclick: () => saveFile(`${sn.name.replace(/[^a-z0-9]+/gi, "_")}.json`, new Blob([JSON.stringify({ format: "smb-skin-backup/1", game: sn.game, saved: sn.when, state: sn.state })], { type: "application/json" })) }, "Download"),
+      el("button", { type: "button", class: "btn", onclick: () => { storeSnaps(loadSnaps().filter(x => x.id !== sn.id)); renderSnaps(); } }, "Delete")));
+  }
+}
+function startOver() {
+  checkpoint("");
+  Object.assign(S, { chrEdits: {}, palEdited: {}, spritePalsEdited: false, mech: {}, sfxEdits: {}, musicEdited: false });
+  if (MU.orig) S.music = JSON.parse(JSON.stringify(MU.orig));
+  if (S.rom) for (const [id, m] of Object.entries(S.profile.palettes || {})) S.spritePals[id] = Array.from(S.rom.slice(m.offset, m.offset + (m.count || 3)), hex2);
+  if (S.profile.player === "smb") { try { bootSample(); } catch (e) { /* rig library unavailable */ } }
+  TZ.fn = null; TZ.slot = null; TZ.pinned = false;
+  fullRefresh(); persist();
+  toast("Started over. Undo brings your work back.");
+}
+$("#btnSnaps").onclick = () => { $("#snapName").value = ""; renderSnaps(); openDlg("snapDlg"); };
+$("#snapSave").onclick = () => { if (saveSnapshot($("#snapName").value)) { $("#snapName").value = ""; renderSnaps(); } };
+$("#snapClose").onclick = () => closeDlg("snapDlg");
+$("#btnStartOver").onclick = () => { $("#overText").textContent = `This clears every edit for ${S.profile.game}: art, colors, mechanics${S.profile.player === "smb" ? ", sounds, music and the player character" : ""}. Undo can bring it back during this visit.`; openDlg("overDlg"); };
+$("#overSnap").onclick = () => { saveSnapshot("Before starting over"); closeDlg("overDlg"); startOver(); };
+$("#overGo").onclick = () => { closeDlg("overDlg"); startOver(); };
+$("#overCancel").onclick = () => closeDlg("overDlg");
 function undo() { if (!undoStack.length) return; redoStack.push(snap()); restore(undoStack.pop()); lastCk.key = ""; }
 function redo() { if (!redoStack.length) return; undoStack.push(snap()); restore(redoStack.pop()); lastCk.key = ""; }
 const STORE_KEY = "smb-skin-bench-v1";
