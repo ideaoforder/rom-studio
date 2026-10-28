@@ -52,6 +52,24 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
   - SMB Double: ProcJumping ($B48B–$B49F) is rewritten in place. The on-ground check is dropped, the swim rules are kept, and non-swimming jumps `JSR $92AA`. That is the residual DoNothing1, now `LDA $EE; INC $EE; LSR A; RTS`, which allows a jump while $EE < 2. Landing calls `JSR $F2CA` (6 unused bytes before SoundEngine) in place of `STA StompChainCounter`, which does that store plus `STA $EE`. It runs on every grounded frame. RAM $EE is otherwise unused. The ground jump counts as 1, so walking off a ledge gives 2 air jumps. Unlimited = the old flap NOPs.
   - MM3: the air state's `JSR $D355` at $D0CC becomes `JSR $F0D9` (the space of a controller-2 debug pit bounce, disabled at $F0BE). On a new A press with $7F == 0 it sets `$7F` and jumps to $CEC0 (the space of the controller-2 debug super jump), which loads the speed from the normal jump's own operands ($CEB4/$CEB9), so it follows Jump height. The state-0 pointer ($CD9A/$CDB0) goes to a wrapper at $F0E9, `STY $7F; JMP $CE36` (Y = state = 0), to reset on the ground. The jump entry $CEAD clears bit 7 of $14 (`ASL $14; LSR $14`), so the ground-jump frame can't also air-jump. Unlimited skips the `INC $7F`.
 
+## Super Mario Bros. 2 (USA, Rev 1 / PRG1)
+
+`SMB2_PROFILE`: MMC3, 128 KB PRG + 128 KB CHR (262,160 bytes). It's built by `dev/gen_smb2/` from the Xkeeper0/smb2 disassembly, which rebuilds PRG1 byte for byte. PRG0 differs in 8,000+ bytes, so detection checks a PRG1-only byte run, and PRG0 is unsupported for now.
+
+- **8×16 sprites.** A tile index N draws N on top and N+1 below. Odd N reads from the background pattern table. The profile spells a sprite as two 8×8 tokens, with odd-table tiles written as `100`–`1FF` (TOK now takes 3 hex digits). `chr_banks` has 8 entries covering $0000–$1FFF:
+  - SpriteCHR1: the character bank, chosen by `CHRBank_CharacterSize`.
+  - CHR2/3: common enemies, $08/$09.
+  - CHR4: world enemies, from `CHRBank_WorldEnemies`.
+  - BG1: world background, a 2 KB bank.
+  - BG2: Animated1 ($18), a 2 KB bank.
+- **Players.** 4 characters × big/small × 11 frames from `CharacterTiles_Walk1`, each a 2×2 grid of 8×16 sprites plus an "eyes" sprite in palette 1 (`CharacterEyeTiles`).
+  - CurrentCharacter order is Mario 0, Princess 1, Toad 2, Luigi 3. The disassembly's eye comments swap Luigi and the Princess.
+  - The eyes live in the animated BG banks, and `chr_links` keep all 8 copies in step.
+  - Checked against live OAM over about 6,300 frames; the only mismatches were screen-edge wrap.
+- **Enemies and items.** `EnemyTilemap1/2` groups. Size comes from `ObjectAttributeTable` (16x32, Horizontal, Mirrored). Palettes come from the types whose `EnemyAnimationTable` offset falls in the group. Birdo's are pink 3, red 1 and gray 2 (`Enemy_Birdo_Attributes`). The rocket is drawn by hand as 32×32, as `RenderSprite_Rocket` does.
+- **Areas.** World 1–7, using each world's overworld sprite palettes (`World{n}SpritePalettes` + 1). The sky is the day background color. The underground and boss sets aren't exposed yet.
+- **Next:** bosses (Mouser, Tryclyde, Fryguy, Clawgrip, Wart, Hawkmouth boss; these use tilemap 2 and `BossTileset` BG banks), blocks, mechanics, character-select sprites.
+
 ## ROM facts (SMB World, NROM)
 
 16-byte header, PRG at 0x10, CHR at 0x8010 (sprites) / 0x9010 (BG). File offset = addr − 0x8000 + 0x10. Labels from the Xkeeper0 smb1 disassembly. Key ones: `Palette0_MTiles` $8B10, `Palette3Data` $89D1, `ColorRotatePalette` $89C3, `BackgroundColors` $85CF, `PowerUpGfxTable` $E6BE, SoundEngine $F2D0.

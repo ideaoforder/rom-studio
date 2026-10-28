@@ -7,4 +7,5 @@ for t in test_bench test_objects test_powerups test_blocks test_sounds test_scop
   echo "== $t"; python3 "$t.py" || status=1
 done
 if [ -n "$MM3_ROM" ]; then for t in test_mm3 test_tile_inspector test_color_match; do echo "== $t"; python3 "$t.py" || status=1; done; fi
+if [ -n "$SMB2_ROM" ]; then echo "== test_smb2"; python3 test_smb2.py || status=1; fi
 exit $status
