@@ -46,6 +46,8 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
 - **Blocks**: stage bank layout — screen list `$AA00[i]` → 64-byte screen at `$AF00 + id*64` (row-major 8×8 of 32×32 blocks) → `$B700 + 4*block` (TL, TR, BL, BR metatiles) → metatile tiles `$BB00/$BC00/$BD00/$BE00 + m`, palette+collision `$BF00 + m` (low 2 bits = palette). BG CHR = 2 KB banks `$AA80/$AA81`; BG palettes (area 0) at `$AA82 + 20*AA61`. Each stage object has the stage's first screen and a sheet of every metatile its screens use.
 - Not yet: Doc Robot / Wily bosses, weapon-specific Mega Man poses, later-area BG palettes/CHR swaps, sounds/music.
 
+- **Start powered up:** SMB `start` is a `choice` knob with no `offset`; each option carries `patches` (applied with the toggles). Big/Fire rewrite PrimaryGameSetup ($8061: `LDA #st; STA PlayerStatus; STA FetchNewGameTimerFlag`, size is already 0 = big from the memory clear) and ContinueGame ($8267: `LDX #st; STX PlayerStatus … STA PlayerSize` with A=0), so every life starts that way. MM3 `allweapons` replaces the new-game `LDA #$9C; STA $A9` (Rush Coil) at $1EC8F7 with `JSR $CCED`, the game's own unused routine that fills $A2–$AD with $9C. The lives byte at $C8FC stays put.
+
 ## ROM facts (SMB World, NROM)
 
 16-byte header, PRG at 0x10, CHR at 0x8010 (sprites) / 0x9010 (BG). File offset = addr − 0x8000 + 0x10. Labels from the Xkeeper0 smb1 disassembly. Key ones: `Palette0_MTiles` $8B10, `Palette3Data` $89D1, `ColorRotatePalette` $89C3, `BackgroundColors` $85CF, `PowerUpGfxTable` $E6BE, SoundEngine $F2D0.

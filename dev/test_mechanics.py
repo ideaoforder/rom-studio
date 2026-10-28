@@ -47,6 +47,13 @@ def smb_measure(path):
     nes = smb_boot(path); l0 = nes[0x75A]
     for t in range(1200): nes.controller = R if t < 900 else 0; nes.step(1)
     o["lives_lost"] = l0 - nes[0x75A]; o["got_past_goomba"] = nes[0x6D] > 0
+    nes = smb_boot(path); o["start_power"] = (nes[0x754], nes[0x756])  # (size 0 = big, status 0/1/2 = small/super/fire)
+    for _ in range(40): nes.controller = R; nes.step(1)
+    nes[0xCE] = 0xF0; nes[0xB5] = 1  # drop into a pit
+    for _ in range(700): nes.controller = 0; nes.step(1)
+    o["after_death"] = (nes[0x754], nes[0x756])
+    for t in range(30): nes.controller = B if t < 3 else 0; nes.step(1)  # B throws a fireball only when fiery
+    o["fireball"] = any(nes[0x24 + i] for i in range(2))
     return o
 def mm3_boot(path):
     nes = C.NES(path)
@@ -64,6 +71,7 @@ def mm3_measure(path):
     for t in range(2500):
         nes.controller = R | (A if (t // 40) % 3 == 0 else 0); nes.step(1); low = min(low, nes[0xA2] & 0x1F)
     o["lowest_health"] = low
+    o["owned"] = sum(nes[a] >= 0x80 for a in range(0xA3, 0xAE))  # weapons + Rush with the "have it" bit
     nes = mm3_boot(path); nes[0xA3] = 0x9C; nes[0xA0] = 1
     for t in range(200): nes.controller = B if t % 12 < 2 else 0; nes.step(1)
     o["gemini_left"] = nes[0xA3] & 0x1F
@@ -83,17 +91,20 @@ with sync_playwright() as p:
     pw = p.chromium.launch()
     smb = {}
     for tag, st in [("smb_base", {}), ("smb_moon", {"gravity": 25, "jump": 150}), ("smb_fast", {"speed": 150}), ("smb_ice", {"grip": 25}),
-                    ("smb_inv", {"invincible": True}), ("smb_lives", {"lives": True}), ("smb_flap", {"flap": True})]:
+                    ("smb_inv", {"invincible": True}), ("smb_lives", {"lives": True}), ("smb_flap", {"flap": True}),
+                    ("smb_big", {"start": 1}), ("smb_fire", {"start": 2})]:
         path, parity, same = build(pw, SMB, st, tag); smb[tag] = smb_measure(path); smb[tag]["ruby"] = parity; smb[tag]["roundtrip"] = same
     for k, v in smb.items(): print(k, v)
     b = smb["smb_base"]
     checks = {"moon jumps higher": smb["smb_moon"]["jump_px"] > b["jump_px"] * 1.3, "fast is faster": smb["smb_fast"]["top_speed"] > b["top_speed"],
               "ice takes longer to speed up": smb["smb_ice"]["frames_to_top"] > b["frames_to_top"] * 2, "flap rises mid-air": smb["smb_flap"]["flap_rise_px"] > 20 and b["flap_rise_px"] == 0,
               "invincible survives the goomba": smb["smb_inv"]["got_past_goomba"] and smb["smb_inv"]["lives_lost"] == 0 and b["lives_lost"] > 0,
-              "infinite lives keeps the count": smb["smb_lives"]["lives_lost"] == 0, "Ruby parity + round trip": all(v["ruby"] and v["roundtrip"] for v in smb.values())}
+              "infinite lives keeps the count": smb["smb_lives"]["lives_lost"] == 0,
+              "start Big, and Big again after a death": smb["smb_big"]["start_power"] == (0, 1) and smb["smb_big"]["after_death"] == (0, 1) and b["after_death"] == (1, 0),
+              "start Fire, again after a death, throws fireballs": smb["smb_fire"]["start_power"] == (0, 2) and smb["smb_fire"]["after_death"] == (0, 2) and smb["smb_fire"]["fireball"] and not smb["smb_big"]["fireball"], "Ruby parity + round trip": all(v["ruby"] and v["roundtrip"] for v in smb.values())}
     if MM3:
         mm = {}
-        for tag, st in [("mm3_base", {}), ("mm3_floaty", {"gravity": 50, "jump": 150}), ("mm3_fast", {"speed": 150}), ("mm3_inv", {"invincible": True}), ("mm3_ammo", {"ammo": True, "power": 1000}),
+        for tag, st in [("mm3_base", {}), ("mm3_floaty", {"gravity": 50, "jump": 150}), ("mm3_fast", {"speed": 150}), ("mm3_inv", {"invincible": True, "allweapons": True}), ("mm3_ammo", {"ammo": True, "power": 1000}),
                         ("mm3_weap", {"shotspeed": 150, "w0.shots": 1, "w1.cost": 0, "w1.dmg": 300, "power": 200, "w8.sound": 0x2E, "hitbox": 200})]:
             path, parity, same = build(pw, MM3, st, tag); mm[tag] = mm3_measure(path); mm[tag]["ruby"] = parity; mm[tag]["roundtrip"] = same
         for k, v in mm.items(): print(k, v)
@@ -113,6 +124,7 @@ with sync_playwright() as p:
         dmg = 0x10 + 0x0A * 0x2000 + 0x100
         checks.update({"MM3 floaty jumps higher": mm["mm3_floaty"]["jump_px"] > b["jump_px"] * 2, "MM3 fast walks farther": mm["mm3_fast"]["walk_px"] > b["walk_px"] * 1.25,
                        "MM3 invincible keeps full health": mm["mm3_inv"]["lowest_health"] == 28 and b["lowest_health"] < 28,
+                       "MM3 start with every weapon": mm["mm3_inv"]["owned"] == 11 and b["owned"] == 1,
                        "MM3 weapons don't drain": mm["mm3_ammo"]["gemini_left"] == 28 and b["gemini_left"] < 28,
                        "MM3 one-hit damage tables": all((rom[dmg + i] == 28) == (orig[dmg + i] not in (0, 0x58)) for i in range(9 * 256)),
                        "MM3 shot speed 4 -> 6 px/frame": b["shot_px_per_frame"] == 4 and mm["mm3_weap"]["shot_px_per_frame"] == 6,
