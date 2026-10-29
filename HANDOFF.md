@@ -70,6 +70,19 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
 - **Areas.** World 1–7, using each world's overworld sprite palettes (`World{n}SpritePalettes` + 1). The sky is the day background color. The underground and boss sets aren't exposed yet.
 - **Next:** bosses (Mouser, Tryclyde, Fryguy, Clawgrip, Wart, Hawkmouth boss; these use tilemap 2 and `BossTileset` BG banks), blocks, mechanics, character-select sprites.
 
+## Contra (USA)
+
+`CONTRA_PROFILE`: UNROM, 128 KB PRG, **CHR-RAM**. It's built by `dev/gen_contra/` from the vermiceli/nes-contra-us disassembly, which rebuilds the ROM byte for byte with cc65.
+
+- **Compressed graphics (`profile.chr_ram`).** All art is RLE in `graphic_data_xx` blocks, unpacked into the PPU per level.
+  - **Virtual offsets.** The app decodes each block (`gfxDecode`, mirroring `write_graphic_data_to_ppu`) and gives its tiles virtual offsets: `vbase (0x1000000) + block * 0x2000 + PPU address`. `srcTile()` reads them; `chrEdits` key on them like any tile.
+  - **Mapping objects to tiles.** An object's `chr_area` names a per-level PPU map (runs of `[tile, count, offset]`), so tokens resolve to virtual or raw offsets. The boss areas (`L1b` etc.) include the uncompressed `alt_graphic_data` tiles in bank 2, which are plain offsets.
+  - **Build.** Only edited blocks are re-encoded (`gfxEncode`: greedy, runs of 3+). A block that fits goes back in place. Otherwise it moves to its bank's free tail (`free`: bank 2 707, bank 4 575, bank 5 2508, bank 6 730 bytes), and `graphic_data_ptr_tbl` is repointed. Block 0a carries `aliases: [0x10]` + `prefix`, because 10 reads 0a's data flipped from 2 bytes earlier.
+  - **Ruby.** `SMB.gfx_decode/gfx_encode`, `Rom#tile_bytes/set_tile_bytes/pack_chr_ram!`, byte-identical to JS. The encoder reproduces every original block at its original size.
+- **Palettes.** `gp.XX` are `game_palettes` entries. `L1.0`–`L1.3` (sprite) and `L1.bg0`–`L1.bg3` (background) are `same_as` aliases from each level header, so editing a shared palette edits it everywhere. `palIdFor`/`palRef` follow aliases, and the load/build/export loops skip them. Per-tile numeric and area-relative palettes now appear as editable rows.
+- **Sprites.** 35 objects from `sprite_ptr_tbl_0/1` (players outdoor and base, bullets, falcons, explosions, soldiers, level enemies, bosses, ending). Bill uses sprite palettes 0 + 1; Lance is the same tiles all in palette 1 (`sprite_attr_start_tbl` $05).
+- **Blocks.** Per level: first screen, a tile sheet, and a boss-area screen drawn with the alt graphics. Indoor levels use a flipped copy of block 0a (block 10); the generator adds `h` to those tokens.
+
 ## ROM facts (SMB World, NROM)
 
 16-byte header, PRG at 0x10, CHR at 0x8010 (sprites) / 0x9010 (BG). File offset = addr − 0x8000 + 0x10. Labels from the Xkeeper0 smb1 disassembly. Key ones: `Palette0_MTiles` $8B10, `Palette3Data` $89D1, `ColorRotatePalette` $89C3, `BackgroundColors` $85CF, `PowerUpGfxTable` $E6BE, SoundEngine $F2D0.

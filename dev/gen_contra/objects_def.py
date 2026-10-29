@@ -1,0 +1,42 @@
+# (name, group, area, [(frame name, sprite code), ...], lance=False)
+def R(prefix, codes, start=1): return [(f"{prefix} {i}" if len(codes) > 1 else prefix, c) for i, c in enumerate(codes, start)]
+PLAYER = R("walk", [2,3,4,5,6]) + R("jump", [8,9]) + R("hit", [0xa,0xb]) + [("dead",0xc)] + R("walk & aim", [0xd,0xe,0xf]) + R("aim up-angle", [0x10,0x11,0x12]) + \
+         R("aim down-angle", [0x13,0x14,0x15]) + [("aim up",0x16),("prone",0x17),("in water",0x19),("climb out",0x1a),("water aim up",0x1b),("water aim angle",0x1c),("water aim",0x1d)]
+BASE = [("facing in",0x50)] + R("strafe", [0x51,0x52,0x53]) + [("crouch",0x54),("electrocuted",0x55),("dead",0x56)] + R("run", [0x57,0x58])
+OBJECTS = [
+  ("Bill", "Players", "L1", PLAYER), ("Lance", "Players", "L1", PLAYER, True),
+  ("Bill (base)", "Players", "L2", BASE), ("Lance (base)", "Players", "L2", BASE, True),
+  ("Bullets", "Weapons", "L1", [("default",0x1e),("M",0x1f),("S",0x20),("F",0x22),("L up",0x23),("L",0x24),("L angled",0x25)]),
+  ("Bullets (base)", "Weapons", "L2", [("L 1",0x82),("L 2",0x83),("L 3",0x84),("L 4",0x92)]),
+  ("Weapon falcons", "Items", "L1", [("S",0x2f),("B",0x30),("F",0x31),("L",0x32),("R",0x33),("M",0x34),("flashing",0x4e)]),
+  ("Weapon capsule", "Items", "L1", [("flying",0x4d)]),
+  ("Explosions", "Effects", "L1", [("big",0x35),("medium",0x36),("small",0x37),("round",0x38),("ring",0x39),("wide ring",0x3a),("tiny ring",0x47)]),
+  ("Water splash", "Effects", "L1", [("splash",0x73),("puddle",0x18)]),
+  ("Soldier", "Enemies", "L1", R("run", [0x3b,0x3c,0x3d,0x3e,0x3f]) + [("shoot",0x40),("shoot down",0x41),("shoot up",0x42)]),
+  ("Soldier (crouching)", "Enemies", "L6", [("crouch",0x26)]),
+  ("Soldier (gunner)", "Enemies", "L1", [("run 1",0x27),("run 2",0x28),("shoot up",0x29),("shoot",0x2c),("shoot down",0x2d)]),
+  ("Rifle man", "Enemies", "L1", [("shoot",0x43),("bush 1",0x44),("bush 2",0x45),("bush 3",0x46)]),
+  ("Scuba soldier", "Enemies", "L3", [("hiding",0x4b),("shooting",0x4c)]),
+  ("Enemy bullet", "Enemies", "L1", [("turret",0x21)]),
+  ("Waterfall hazards", "Enemies", "L3", [("floating rock",0x48),("bridge fire",0x49),("boulder",0x4a)]),
+  ("Dragon parts", "Bosses", "L3", [("projectile",0x79),("arm orb",0x7a),("hand orb",0x7b)]),
+  ("Snow field", "Enemies", "L5", [("enemy bullet",0x07),("ice grenade 1",0x74),("ice grenade 2",0x75),("ice grenade 3",0x76),("ice grenade up",0x77),("ground separator",0xc4)]),
+  ("Mini UFO", "Bosses", "L5b", [("frame 1",0x7c),("frame 2",0x7d),("frame 3",0x7e)]),
+  ("Turret man", "Enemies", "L5", [("frame 1",0xbd),("frame 2",0xbe)]),
+  ("Energy zone fire", "Enemies", "L6", [("wall 1",0xbf),("wall 2",0xc0),("ceiling 1",0xc1),("ceiling 2",0xc2)]),
+  ("Gordea", "Bosses", "L6b", [("stand",0xb7),("legs together",0xb9),("run",0xba),("throw",0xc3),("disk 1",0xbb),("disk 2",0xbc)]),
+  ("Mine cart", "Enemies", "L7", [("frame 1",0x2a),("frame 2",0x2b)]),
+  ("Alien's lair", "Enemies", "L8", [("bugger 1",0xac),("bugger mouth",0xad),("bugger 2",0xae),("bugger 3",0xaf),("gel",0xb0),("gel 1",0xb1),("gel 2",0xb2),
+                                     ("insect 1",0xb3),("insect 2",0xb4),("insect 3",0xb5),("egg",0xb6)]),
+  ("Base soldier", "Enemies", "L2", [("jump 1",0x93),("jump 2",0x94),("jump 3",0x95),("hit",0x96),("in air",0x97),("facing",0x98)]),
+  ("Rolling grenade", "Enemies", "L2", [("far",0x99),("closer",0x9a),("close",0x9b),("closest",0x9c)]),
+  ("Hand grenade", "Enemies", "L2", R("frame", list(range(0xa0,0xaa)))),
+  ("Base explosion", "Effects", "L2", R("frame", [0x9d,0x9e,0x9f])),
+  ("Boss eye", "Bosses", "L2boss", R("frame", [0x5d,0x5e,0x5f,0x60,0x61,0x62]) + [("projectile",0x64)]),
+  ("Godomuga", "Bosses", "L4boss", R("frame", [0x68,0x69,0x6a,0x6b,0x6c]) + R("bubble", [0x6d,0x6e,0x6f,0x70,0x71,0x72])),
+  ("Base 2 boss soldiers", "Bosses", "L4boss", [("blue 1",0x85),("blue 2",0x86),("blue 3",0x87),("blue facing 1",0x88),("blue facing 2",0x89),("blue flying 1",0x8a),("blue flying 2",0x8b),
+                                               ("red 1",0x8c),("red 2",0x8d),("red 3",0x8e),("red facing",0x8f),("red with gun",0x90)]),
+  ("Elevator", "Effects", "L2boss", [("player on top",0x91)]),
+  ("Helicopter", "Ending", "END", R("side", [0xc5,0xc6,0xc7,0xc8]) + R("front", [0xc9,0xca,0xcb,0xcc,0xcd,0xce])),
+  ("Ending mountains", "Ending", "END", [("mountains",0xcf)]),
+]

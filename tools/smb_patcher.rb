@@ -109,6 +109,71 @@ module SMB
   end
 
   # ------------------------------------------------------------- tiles
+  def self.gfx_decode(b, off)
+    buf = Array.new(0x2000, 0)
+    segs = []
+    p = off
+    ppu = b[p] | (b[p + 1] << 8)
+    p += 2
+    seg = [ppu, 0]
+    loop do
+      c = b[p]
+      if c == 0xFF
+        p += 1
+        break
+      elsif c == 0x7F
+        segs << seg if seg[1].positive?
+        ppu = b[p + 1] | (b[p + 2] << 8)
+        seg = [ppu, 0]
+        p += 3
+      elsif c < 0x80
+        c.times { buf[ppu] = b[p + 1] if ppu < 0x2000; ppu += 1; seg[1] += 1 }
+        p += 2
+      else
+        n = c & 0x7F
+        n.times { |k| buf[ppu] = b[p + 1 + k] if ppu < 0x2000; ppu += 1; seg[1] += 1 }
+        p += 1 + n
+      end
+    end
+    segs << seg if seg[1].positive?
+    { buf: buf, segs: segs, len: p - off }
+  end
+
+  def self.gfx_encode_seg(d)
+    out = []
+    lit = []
+    flush = lambda do
+      until lit.empty?
+        n = [lit.size, 0x7E].min
+        out.push(0x80 | n, *lit.shift(n))
+      end
+    end
+    i = 0
+    while i < d.size
+      r = 1
+      r += 1 while i + r < d.size && d[i + r] == d[i] && r < 0x7E
+      if r >= 3
+        flush.call
+        out.push(r, d[i])
+        i += r
+      else
+        lit << d[i]
+        i += 1
+      end
+    end
+    flush.call
+    out
+  end
+
+  def self.gfx_encode(buf, segs)
+    out = []
+    segs.each_with_index do |(a, n), k|
+      out << 0x7F if k.positive?
+      out.push(a & 0xFF, a >> 8, *gfx_encode_seg(buf[a, n]))
+    end
+    out << 0xFF
+  end
+
   def self.decode_tile(bytes)
     (0...8).map do |y|
       lo = bytes[y]
@@ -136,6 +201,67 @@ module SMB
     end
 
     def generic? = !@profile.nil?
+
+    # ---- compressed CHR-RAM graphics (profile "chr_ram", e.g. Contra). Must match index.html's gfxDecode/gfxEncode/chrRamPack.
+    def chr_ram = @profile && @profile["chr_ram"]
+
+    def vchr
+      @vchr ||= chr_ram["blocks"].to_h { |id, blk| [id.to_i, SMB.gfx_decode(@bytes, blk.fetch("offset"))] }
+    end
+
+    def virtual?(off) = chr_ram && off >= chr_ram.fetch("vbase")
+
+    def tile_ok?(off)
+      if virtual?(off)
+        v = off - chr_ram["vbase"]
+        vchr.key?(v / 0x2000) && (v % 16).zero?
+      elsif chr_ram
+        off.between?(16, prg_end - 16) # uncompressed tiles kept in PRG (copied to CHR-RAM by the game)
+      else
+        c0, c1 = chr_range
+        off.between?(c0, c1 - 16) && ((off - c0) % 16).zero?
+      end
+    end
+
+    def tile_bytes(off)
+      return @bytes[off, 16] unless virtual?(off)
+      v = off - chr_ram["vbase"]
+      vchr.fetch(v / 0x2000)[:buf][v % 0x2000, 16]
+    end
+
+    def set_tile_bytes(off, data)
+      return @bytes[off, 16] = data unless virtual?(off)
+      v = off - chr_ram["vbase"]
+      (@vedits ||= {})[v / 0x2000] = true
+      vchr.fetch(v / 0x2000)[:buf][v % 0x2000, 16] = data
+    end
+
+    # Re-encode edited blocks; in place when they fit, else into the bank's free tail with the pointer table updated.
+    def pack_chr_ram!
+      return [] unless chr_ram && @vedits
+      cur = {}
+      @vedits.keys.sort.map do |id|
+        blk = chr_ram["blocks"].fetch(id.to_s)
+        dec = vchr.fetch(id)
+        enc = SMB.gfx_encode(dec[:buf], dec[:segs])
+        if enc.size <= dec[:len]
+          @bytes[blk["offset"], enc.size] = enc
+          next [id, enc.size, false]
+        end
+        bank = blk.fetch("bank")
+        fs, fl = chr_ram.dig("free", bank.to_s) || [0, 0]
+        at = cur[bank] ||= fs
+        pre = (blk["prefix"] || "").scan(/../).map { |h| h.to_i(16) }
+        abort format("Graphics block %02x grew to %d bytes and bank %d has only %d spare", id, enc.size, bank, fs + fl - at) if at + pre.size + enc.size > fs + fl
+        @bytes[at, pre.size + enc.size] = pre + enc
+        cur[bank] = at + pre.size + enc.size
+        cpu = ->(a) { a - 0x10 - bank * 0x4000 + 0x8000 }
+        set_ptr = ->(entry, a) { t = chr_ram["ptr_table"] + 3 * entry; @bytes[t] = cpu.(a) & 0xFF; @bytes[t + 1] = cpu.(a) >> 8 }
+        set_ptr.(id, at + pre.size)
+        (blk["aliases"] || []).each { |al| set_ptr.(al, at) }
+        [id, enc.size, true]
+      end
+    end
 
     # CHR-ROM region from the iNES header: [start, end)
     def chr_range
@@ -525,8 +651,8 @@ module SMB
       f.fetch("slots").each_with_index do |slot, i|
         next unless slot
         off, flip, sx, sy = slot
-        c0, c1 = rom.generic? ? rom.chr_range : [CHR_OFFSET, CHR_OFFSET + 0x2000]
-        unless off.between?(c0, c1 - 16) && ((off - c0) % 16).zero?
+        ok = rom.generic? ? rom.tile_ok?(off) : off.between?(CHR_OFFSET, CHR_OFFSET + 0x2000 - 16) && ((off - CHR_OFFSET) % 16).zero?
+        unless ok
           abort "objects.json: #{f['object']} / #{f['frame']} points at 0x#{off.to_s(16)}, which isn't a CHR tile"
         end
         ox = f.fetch("x") + (sx || (i % cols) * 8)
@@ -547,24 +673,27 @@ module SMB
 
     conflicts = []
     changed = 0
-    original_tiles = candidates.keys.to_h { |off| [off, rom.bytes[off, 16]] }
+    tb = ->(off) { rom.generic? ? rom.tile_bytes(off) : rom.bytes[off, 16] }
+    put = ->(off, data) { rom.generic? ? rom.set_tile_bytes(off, data) : rom.bytes[off, 16] = data }
+    original_tiles = candidates.keys.to_h { |off| [off, tb.(off).dup] }
     candidates.each do |off, cands|
-      orig = decode_tile(rom.bytes[off, 16])
+      orig = decode_tile(tb.(off))
       edits = cands.reject { |px, _| px == orig }
       next if edits.empty?
       if edits.map(&:first).uniq.size > 1
         conflicts << format("tile at 0x%04X was drawn differently in: %s", off, edits.map(&:last).uniq.join(", "))
         next
       end
-      rom.bytes[off, 16] = encode_tile(edits.first.first)
+      put.(off, encode_tile(edits.first.first))
       changed += 1
     end
     abort "Shared tiles disagree in objects.png:\n  #{conflicts.join("\n  ")}" unless conflicts.empty?
     # Linked copies (tiles the game swaps in from another CHR bank) follow their source.
     (key["links"] || []).each do |src, mirrors|
-      next if rom.bytes[src, 16] == original_tiles.fetch(src) { rom.bytes[src, 16] }
-      mirrors.each { |m| rom.bytes[m, 16] = rom.bytes[src, 16] }
+      next if tb.(src) == original_tiles.fetch(src) { tb.(src) }
+      mirrors.each { |m| put.(m, tb.(src).dup) }
     end
+    rom.pack_chr_ram!.each { |id, size, moved| puts format("graphics block %02x: %d bytes%s", id, size, moved ? " (moved to free space)" : "") } if rom.generic?
     changed
   end
 
