@@ -23,6 +23,7 @@ Open one of these with **Open ROM…** and ROM Studio switches to that game (the
 | Mega Man 3 | Mega Man 3 (USA) | 393,232 | `603AAA57` | Mega Man & weapons, bosses, enemies, items, blocks, mechanics |
 | Super Mario Bros. 2 | Super Mario Bros. 2 (USA) (Rev 1) | 262,160 | `CA594ACE` | the four players (big & small), enemies, items, effects |
 | Contra | Contra (USA) | 131,088 | `F6035030` | Bill & Lance, weapons, enemies, bosses, all 8 levels' blocks, mechanics |
+| Castlevania | Castlevania (USA) (Rev 1) | 131,088 | `B668C7FC` | Simon, whip & subweapons, items, enemies, bosses, every stage's background, mechanics |
 
 Another revision or region of the same game has its code in different places, so it won't open until it has its own profile (for example the first release of SMB2, Rev 0).
 

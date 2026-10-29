@@ -9,4 +9,5 @@ done
 if [ -n "$MM3_ROM" ]; then for t in test_mm3 test_tile_inspector test_color_match; do echo "== $t"; python3 "$t.py" || status=1; done; fi
 if [ -n "$SMB2_ROM" ]; then echo "== test_smb2"; python3 test_smb2.py || status=1; fi
 if [ -n "$CONTRA_ROM" ]; then for t in test_contra test_contra_mech; do echo "== $t"; python3 "$t.py" || status=1; done; fi
+if [ -n "$CV_ROM" ]; then for t in test_castlevania test_castlevania_mech; do echo "== $t"; python3 "$t.py" || status=1; done; fi
 exit $status

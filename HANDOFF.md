@@ -31,7 +31,7 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
 
 ## Supported games
 
-`BUILTIN_PROFILES = [SMB_PROFILE, MM3_PROFILE]`. Opening a ROM picks the profile whose `rom.size` + `rom.check` match (asks for a second open if unsaved edits would be cleared). The autosave remembers which game it belongs to (`snap().game`).
+`BUILTIN_PROFILES = [SMB_PROFILE, MM3_PROFILE, SMB2_PROFILE, CONTRA_PROFILE, CV_PROFILE]`. Opening a ROM picks the profile whose `rom.size` + `rom.check` match (asks for a second open if unsaved edits would be cleared). The autosave remembers which game it belongs to (`snap().game`).
 
 ### Mega Man 3 (USA), MMC3, 256 KB PRG + 128 KB CHR-ROM
 
@@ -92,6 +92,34 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
   - **Run speed:** the ±1 X velocities.
   - **Air jumps:** `@player_jump_check`'s `JMP handle_jump` goes through `$F620`. A new A press re-runs `set_jump_status_and_y_velocity`, and bit 3 of `PLAYER_JUMP_STATUS` marks a used double jump (the game doesn't use bits 1–3, and landing clears the byte).
 
+## Castlevania (USA) (Rev 1)
+
+`CV_PROFILE`: UNROM, 128 KB PRG, **CHR-RAM**, but unlike Contra the art is stored **raw** in PRG. There's no public disassembly, so `dev/gen_castlevania/` works from the ROM plus the cynes emulator.
+
+- **Graphics sets.** The loader at `$FD23` (fixed bank) copies "sets" from `$FDBB`. A set is a list of `bank, CPU source, PPU address, length` records, ending with `$FF`. `$C8B0` gives the set for each stage (0–18). Each block's PPU contents are set 3 (Simon, common sprites, the status bar font) overlaid with its own set. These were checked against the game's CHR-RAM in cynes save states (CHR-RAM sits at offset 11234, nametable 0 just before it).
+  - The profile uses `chr_ram` with no compressed `blocks`. `areas` map each block's tiles straight to file offsets, so edits are plain tile writes, and Ruby needs nothing new.
+  - `chr_link_sets` carry an edit to identical tiles at the same PPU address in the title, intro, map and ending sets.
+- **Sprites.** The drawer at `$80D6` (bank 0) reads pointer tables `$8FBE` (codes 00–7F) and `$90BE` (80–FF).
+  - Each entry is a count, then parts. A part is a Y byte (signed Y = byte >> 1; bit 0 = reuse the previous attribute), a tile, an optional attribute, and X.
+  - `$80 lo hi` jumps into a shared list and `$81` returns. Sprites are 8×16 (PPUCTRL `$B0`).
+  - Many codes are different enemies in different blocks, because the block's set decides the tiles. Each object names its block (`B1`–`B7`). They were picked by rendering every code in every block and by logging codes the game draws (`$031C,x`) while walking each stage (`explore.py`).
+- **Palettes.**
+  - Sprite palettes (`spr.0`–`spr.3`) are VRAM string 6 (`$CCF9` table), shared by every stage. The `B1.0`… entries are aliases of them.
+  - Background palettes come per block from string `$FB9B[stage]`.
+- **Blocks.** Each stage's first screen comes from nametable 0 after warping there, plus a tile sheet per block.
+  - The warp: set `$28`/`$29` to the stage, game state `$18 = $0C`, step `$19 = 5`. That's the restart path that runs the set load.
+- **Mechanics** (`mech.py`, checked by `dev/test_castlevania_mech.py`):
+  - **Invincible:** `SBC $4B` in the damage routine becomes `SBC #0`, so knockback still happens.
+  - **Infinite lives:** `DEC $2A` becomes `LDA`.
+  - **Lives at the start:** the two `LDA #4 / STA $2A`. Number knobs now take `also` (more offsets) and `bias` (the byte = the shown number + bias).
+  - **Hearts:** infinite hearts NOPs the two `DEY`s on `$71`, and the stopwatch's `SBC #5` becomes `SBC #0`. The start amount is the `LDX #5` that refills hearts each life.
+  - **Starting kit:** subweapon (`$015B`: 08 dagger, 09 cross, 0A stopwatch, 0B holy water, 0D axe), shots (`$64`) and whip (`$70`).
+    - All three share a hook at `$BA40` (bank 6 free space), called from the three `LDA #0 / STA $015B / STA $64` resets and the whip reset on death. The new-game `STX $70` is NOPed.
+    - Choice/number knobs with `install` write the hook first, then their value byte.
+  - **Damage:** the immediates 8/12/16 in the damage routine.
+  - **Jump height:** the jump table at `$9B90`, signed. The walker plays it forward, then mirrored for the fall. `$F8` means "hold" and `$80`/`$81` are markers, so the most per frame is 7.
+  - **Air jumps:** the jump state's `LDA #0 / JSR $9B1E` goes through `$BA60`. It clears a counter at `$07E0` (unreferenced RAM) on a jump's first frame. A new A press restarts the table going up.
+
 ## ROM facts (SMB World, NROM)
 
 16-byte header, PRG at 0x10, CHR at 0x8010 (sprites) / 0x9010 (BG). File offset = addr − 0x8000 + 0x10. Labels from the Xkeeper0 smb1 disassembly. Key ones: `Palette0_MTiles` $8B10, `Palette3Data` $89D1, `ColorRotatePalette` $89C3, `BackgroundColors` $85CF, `PowerUpGfxTable` $E6BE, SoundEngine $F2D0.
@@ -122,6 +150,8 @@ export SMB_ROM="/path/to/Super Mario Bros. (World).nes"   # never commit it
 | `test_ipad.py` | the standalone `index.html` at iPad size with touch |
 | `test_capture.py` | `tools/sprite_capture.lua` logic (lupa) |
 | `sfx_compare.js`, `music_test.js` | node versions of the model-vs-engine checks (`sfx_model.js`, `music_model.js`) |
+
+Other games: `MM3_ROM`, `SMB2_ROM`, `CONTRA_ROM` and `CV_ROM` add `test_mm3`…, `test_smb2`, `test_contra(_mech)` and `test_castlevania(_mech)`.
 
 Each test writes scratch output to `dev/<name>_test/` (ignored by git).
 
