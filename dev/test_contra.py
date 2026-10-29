@@ -86,15 +86,16 @@ with sync_playwright() as p:
 try:
     import cynes, numpy as np
     from PIL import Image
-    def boot(path):
-        nes = cynes.NES(path); f = None
+    def boot(path):  # the last 8 frames: Bill blinks while briefly invincible after spawning
+        nes = cynes.NES(path); fs = []
         for n, k in [(300, 0), (5, cynes.NES_INPUT_START), (60, 0), (5, cynes.NES_INPUT_START), (600, 0)]:
-            for _ in range(n): nes.controller = k; f = nes.step(1)
-        return nes, np.asarray(f).copy()
-    n0, f0 = boot(ROM); n1, f1 = boot(f"{T}/x/{cfg['output']}")
-    Image.fromarray(np.hstack([f0, f1])).resize((1024, 480), Image.NEAREST).save(f"{T}/ingame.png")
+            for _ in range(n): nes.controller = k; fs.append(np.asarray(nes.step(1)).copy())
+        return nes, fs[-8:]
+    n0, F0 = boot(ROM); n1, F1 = boot(f"{T}/x/{cfg['output']}")
     box = (slice(70, 125), slice(30, 80))  # where Bill stands at the start of level 1
-    diff = (f0[box] != f1[box]).any(axis=2).sum()
+    diffs = [int((a[box] != c[box]).any(axis=2).sum()) for a, c in zip(F0, F1)]; k = diffs.index(max(diffs))
+    Image.fromarray(np.hstack([F0[k], F1[k]])).resize((1024, 480), Image.NEAREST).save(f"{T}/ingame.png")
+    diff = max(diffs)
     print("built ROM boots into level 1:", not n1.has_crashed and n1[0x30] == 0, "| Bill's pixels changed on screen:", int(diff))
 except ImportError:
     print("(cynes not installed: skipped booting the built ROM)")
