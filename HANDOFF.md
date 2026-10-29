@@ -83,6 +83,15 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
 - **Sprites.** 35 objects from `sprite_ptr_tbl_0/1` (players outdoor and base, bullets, falcons, explosions, soldiers, level enemies, bosses, ending). Bill uses sprite palettes 0 + 1; Lance is the same tiles all in palette 1 (`sprite_attr_start_tbl` $05).
 - **Blocks.** Per level: first screen, a tile sheet, and a boss-area screen drawn with the alt graphics. Indoor levels use a flipped copy of block 0a (block 10); the generator adds `h` to those tokens.
 
+- **Contra mechanics.** Checked by `dev/test_contra_mech.py` in cynes.
+  - **Invincible:** `@collide_with_enemy`'s `LDA NEW_LIFE_INVINCIBILITY_TIMER,x` becomes `LDA #1`. Weapon pickups and platforms run before it; pits still kill.
+  - **Lives:** infinite lives turns `DEC P1_NUM_LIVES,x` into `LDA`. Extra lives at the start is the immediate in `init_player_lives`.
+  - **Starting weapon:** `player_state_routine_00` calls a routine at `$F612` (unused bank-7 space), which gives the chosen weapon when a life starts with the normal gun. Keep-weapon turns the `STA` in `init_player_and_weapon` into an `LDA`.
+  - **Jump height:** the signed 16-bit Y velocities (the engine's `words` now take `signed`).
+  - **Gravity:** the `apply_gravity` `ADC #$23`.
+  - **Run speed:** the ±1 X velocities.
+  - **Air jumps:** `@player_jump_check`'s `JMP handle_jump` goes through `$F620`. A new A press re-runs `set_jump_status_and_y_velocity`, and bit 3 of `PLAYER_JUMP_STATUS` marks a used double jump (the game doesn't use bits 1–3, and landing clears the byte).
+
 ## ROM facts (SMB World, NROM)
 
 16-byte header, PRG at 0x10, CHR at 0x8010 (sprites) / 0x9010 (BG). File offset = addr − 0x8000 + 0x10. Labels from the Xkeeper0 smb1 disassembly. Key ones: `Palette0_MTiles` $8B10, `Palette3Data` $89D1, `ColorRotatePalette` $89C3, `BackgroundColors` $85CF, `PowerUpGfxTable` $E6BE, SoundEngine $F2D0.

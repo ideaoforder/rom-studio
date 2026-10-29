@@ -68,6 +68,39 @@ for a in palettes:
         if users:
             kind=users[0].split('.')[1]; kind=f"Background palette {kind[2:]}" if kind.startswith("bg") else f"Sprite palette {kind}"
             palettes[a]["label"]=f"{kind} · " + ", ".join(sorted({u.split('.')[0] for u in users}))
+def mechanics():
+    """Byte edits checked in the emulator (dev/test_contra_mech.py). Offsets come from labels + unique byte patterns."""
+    def at(hexs, lo=0x1c010, hi=0x20010):
+        p=bytes.fromhex(hexs); i=ROM.find(p,lo,hi); assert i!=-1 and ROM.find(p,i+1,hi)==-1, hexs; return i
+    lives=off("init_player_lives"); dec=off("init_player_dec_num_lives")+9; assert ROM[dec:dec+2]==bytes.fromhex("D632")
+    weap=off("init_player_and_weapon"); spawn=off("player_state_routine_00"); assert ROM[spawn:spawn+3]==bytes.fromhex("20D5DA")
+    hook=0xF612; hook_off=0x10+7*0x4000+(hook-0xC000); assert set(ROM[hook_off:hook_off+16])=={0xFF}
+    collide=at("B92805F02BB5AED0")+5
+    jo=at("A9FBA0F0"); ji=at("A9FCA090"); grav=off("apply_gravity")+4; assert ROM[grav-1:grav+1]==bytes.fromhex("6923")
+    xr=off("set_player_positive_x_velocity")+1; xl=off("set_player_negative_x_velocity")+1
+    W=[("Normal gun",None),("Machine gun (M)",0x01),("Flame (F)",0x02),("Spread (S)",0x03),("Laser (L)",0x04),("Spread + rapid fire",0x13),("Machine gun + rapid fire",0x11)]
+    def wpatch(w): # player_state_routine_00 -> JSR $F612: if the weapon is the normal gun, set W; then init_player_attributes
+        return [{"offset":spawn,"hex":"2012F6"},{"offset":hook_off,"hex":f"B5AAD004A9{w:02X}95AA4CD5DA"}]
+    jump_hook=at("B5A0F0034CAFD7")+4  # @player_jump_check: JMP handle_jump -> JMP $F620
+    air=0xF620; air_off=0x10+7*0x4000+(air-0xC000); assert set(ROM[air_off:air_off+24])=={0xFF}
+    def airpatch(limit):  # in a jump: new A press -> set_jump_status_and_y_velocity again; bit 3 of PLAYER_JUMP_STATUS = used (landing clears it)
+        return [{"offset":jump_hook,"hex":"4C20F6"},
+                {"offset":air_off,"hex":"B5F52980F00FB5A02908"+("D009" if limit else "EAEA")+"20D3D6B5A0090895A04CAFD7"}]
+    return [
+      {"id":"invincible","label":"Invincible","kind":"toggle","help":"Enemies and their bullets can't hurt you. You can still pick up weapons and ride platforms. Pits still count.","patches":[{"offset":collide,"hex":"A901"}]},
+      {"id":"lives","label":"Infinite lives","kind":"toggle","help":"Losing a life doesn't count down.","patches":[{"offset":dec,"hex":"B532"}]},
+      {"id":"startlives","label":"Extra lives at the start","kind":"number","offset":lives+1,"min":0,"max":29,"help":"Normally 2, plus the life you are playing. The Konami code gives 29."},
+      {"id":"weapon","label":"Weapon at the start of each life","kind":"choice","default":0,"help":"When a life starts with the normal gun (a new game, or after losing a life), you get this instead. Weapons you pick up still replace it.",
+       "options":[{"value":i,"label":l,**({"patches":wpatch(w)} if w is not None else {})} for i,(l,w) in enumerate(W)]},
+      {"id":"keepweapon","label":"Keep your weapon when you lose a life","kind":"toggle","help":"Normally a lost life takes your weapon away.","patches":[{"offset":weap+2,"hex":"B5"}]},
+      {"id":"jump","label":"Jump height","kind":"percent","values":[50,75,100,125,150,200,300],"default":100,"help":"How high a jump goes, outdoors and in the base levels.",
+       "words":[{"lo":jo+3,"hi":jo+1,"mode":"sqrt","signed":True,"max":0x7F00},{"lo":ji+3,"hi":ji+1,"mode":"sqrt","signed":True,"max":0x7F00}]},
+      {"id":"airjump","label":"Air jumps","kind":"choice","default":0,"help":"Press A again in mid-jump to jump again. Double jump gives one extra jump and resets when you land. Unlimited lets you climb the sky.",
+       "options":[{"value":0,"label":"Off (normal)"},{"value":1,"label":"Double jump","patches":airpatch(True)},{"value":2,"label":"Unlimited","patches":airpatch(False)}]},
+      {"id":"gravity","label":"Gravity","kind":"percent","values":[25,50,75,100,150,200],"default":100,"help":"How hard you fall. Low = floaty.","bytes":[{"offset":grav,"n":1,"mode":"mul","min":4}]},
+      {"id":"speed","label":"Run speed","kind":"percent","values":[100,200,300],"labels":{"200":"2×","300":"3×"},"default":100,"help":"Walking speed (the game moves 1 pixel a frame normally).",
+       "bytes":[{"offset":xr,"n":1,"mode":"mul","signed":True,"max":3},{"offset":xl,"n":1,"mode":"mul","signed":True,"max":3}]},
+    ]
 blocks={}
 for b in PATTERN:
     e=tbl[b]; d={"offset":e["off"],"bank":e["bank"]}
@@ -81,7 +114,8 @@ for l in open(os.path.join(os.environ["CONTRA_DIS"],"contra.dbg")):
 P={"format":"nes-sprite-profile/1","game":"Contra (USA)","objects_label":"Sprites",
    "rom":{"size":131088,"chr_offset":0,"check":[[0,"4E45531A0800"],[off("level_1_graphic_data"),"0313191A141605FF"],[off("graphic_data_ptr_tbl"),ROM[off("graphic_data_ptr_tbl"):off("graphic_data_ptr_tbl")+6].hex().upper()]]},
    "chr_ram":{"vbase":VBASE,"ptr_table":off("graphic_data_ptr_tbl"),"blocks":blocks,"free":free,"areas":{a:runs(areas_ppu[a]) for a in used_areas}},
-   "chr_link_sets":sets,"areas":areas,"palettes":palettes,"objects":objects}
+   "chr_link_sets":sets,"areas":areas,"palettes":palettes,"objects":objects,"mechanics":mechanics(),
+   "mechanics_presets":{"Normal":{},"Super soldier":{"invincible":True,"lives":True,"weapon":5},"Moon":{"jump":150,"gravity":50,"airjump":1},"Speedy":{"speed":200,"airjump":1}}}
 out=os.environ.get("CONTRA_OUT","/tmp/contra_profile.json"); json.dump(P,open(out,"w"),separators=(",",":"))
 print(len(objects),"objects",len(sets),"link sets",len(json.dumps(P))//1024,"KB", free)
 if os.environ.get("WRITE_HTML"):
