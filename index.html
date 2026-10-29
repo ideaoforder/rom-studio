@@ -12,6 +12,14 @@
   .opal-copy .btn { display: inline-flex; align-items: center; gap: 8px; }
   .opal-copy .chips { display: inline-flex; gap: 2px; }
   .opal-copy .chip { width: 12px; height: 12px; border-radius: 2px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.25); }
+  .games #gamesList { display: grid; gap: 10px; margin: 12px 0; }
+  .games .game { border: 1px solid var(--line, #d8d3c8); border-radius: 8px; padding: 10px 12px; }
+  .games .game[aria-current="true"] { border-color: var(--accent, #b3262d); }
+  .games .game h3 { margin: 0 0 2px; font-size: 15px; }
+  .games .game .need { font-size: 12px; opacity: .8; overflow-wrap: anywhere; }
+  .games .game .can { margin: 6px 0 0; font-size: 13px; }
+  .games .game .note { margin: 4px 0 0; font-size: 12px; opacity: .8; }
+  .games .games-err { background: #fbe9e7; color: #8a1c13; border-radius: 6px; padding: 8px 10px; }
 </style>
 </head>
 <body>
@@ -317,6 +325,7 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line)
     <div class="actions">
       <span id="romChip" class="chip">No ROM · preview only</span>
       <button class="btn" id="btnRom" type="button">Open ROM…</button>
+      <button class="btn" id="btnGames" type="button" title="Which games and ROM files work">Games</button>
       <button class="btn" id="btnSkin1" type="button">Skin → Player 1…</button>
       <button class="btn" id="btnSkin2" type="button">Skin → Player 2…</button>
       <button class="btn" id="btnProj" type="button">Open project…</button>
@@ -340,6 +349,14 @@ kbd { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line)
       <div class="tools"><input id="dlName" type="text" maxlength="60" style="flex:1;min-width:0;font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:var(--r)"></div>
       <p class="help mono" id="dlFiles"></p>
       <div class="tools"><button class="btn primary" type="button" id="dlGo">Download</button><span class="spacer"></span><button class="btn" type="button" id="dlCancel">Cancel</button></div>
+    </dialog>
+    <dialog id="gamesDlg" class="rescue games" aria-labelledby="gamesH">
+      <h2 id="gamesH">Supported games</h2>
+      <p class="games-err" id="gamesErr" hidden></p>
+      <p>Open one of these ROMs with <b>Open ROM…</b> and ROM Studio switches to that game. You bring the ROM; nothing from the games is in ROM Studio.</p>
+      <div id="gamesList"></div>
+      <p class="help">The fingerprint (CRC32 / SHA-1) is of the ROM without its 16-byte iNES header, the way No-Intro lists them. A different revision or region of the same game has different code addresses, so it won't open until it gets its own profile.</p>
+      <div class="tools"><button class="btn primary" type="button" id="gamesOpen">Open ROM…</button><span class="spacer"></span><button class="btn" type="button" id="gamesClose">Close</button></div>
     </dialog>
     <dialog id="overDlg" class="rescue" aria-labelledby="overH">
       <h2 id="overH">Start over?</h2>
@@ -1553,6 +1570,27 @@ function restoreBackup(j) {
 const SNAP_KEY = "rom-studio-snapshots";
 function loadSnaps() { try { return JSON.parse(localStorage.getItem(SNAP_KEY) || "[]"); } catch (e) { return []; } }
 function storeSnaps(list) { try { localStorage.setItem(SNAP_KEY, JSON.stringify(list)); return true; } catch (e) { toast("Browser storage is full or off here. Download the snapshot to keep it."); return false; } }
+// ---- supported games (what each built-in profile needs and covers)
+const GAME_INFO = [
+  { game: "Super Mario Bros. (World)", title: "Super Mario Bros.", rom: "Super Mario Bros. (World)", size: 40976, crc: "D445F698", sha1: "facee9c577a5262dbe33ac4930bb0b58c8c037f7",
+    can: "Player (pose body parts, palettes, names), enemies & items, blocks, sound effects, music, mechanics", note: "The standard cart (US and Europe are the same file)." },
+  { game: "Mega Man 3 (USA)", title: "Mega Man 3", rom: "Mega Man 3 (USA)", size: 393232, crc: "603AAA57", sha1: "6780b3fcc547c013ee45afac6bb30c6fc6d8b46e",
+    can: "Mega Man and every weapon's colors, weapons, robot masters, Doc Robots and Wily bosses, enemies, items, blocks, mechanics (incl. per-weapon settings)" },
+  { game: "Super Mario Bros. 2 (USA) (Rev 1)", title: "Super Mario Bros. 2", rom: "Super Mario Bros. 2 (USA) (Rev 1)", size: 262160, crc: "CA594ACE", sha1: "ff5bcacf7417b4de1c49f9e54c2905d91391455b",
+    can: "Mario, Luigi, Toad and the Princess (big and small), enemies, items, effects", note: "Rev 1 only for now; the first release (Rev 0) isn't supported yet. Bosses, blocks and mechanics are coming." },
+  { game: "Contra (USA)", title: "Contra", rom: "Contra (USA)", size: 131088, crc: "F6035030", sha1: "979494e7869ac7ab4815fdbd1dc99f893f713fbf",
+    can: "Bill and Lance (outdoor and base), weapons, falcons, enemies, bosses, all 8 levels' blocks, mechanics", note: "Its graphics are compressed: very speckly painting takes more space, and a download says so if a set gets too big." },
+];
+function renderGames(err) {
+  const e = $("#gamesErr"); e.hidden = !err; e.textContent = err || "";
+  const open = g => !!(S.rom && S.profile && S.profile.game === g.game);
+  $("#gamesList").replaceChildren(...GAME_INFO.map(g => el("div", { class: "game", "aria-current": String(open(g)) },
+    el("h3", {}, g.title + (open(g) ? " · loaded" : "")),
+    el("div", { class: "need" }, `${g.rom} · ${g.size.toLocaleString()} bytes · CRC32 ${g.crc} · SHA-1 ${g.sha1}`),
+    el("p", { class: "can" }, g.can),
+    g.note ? el("p", { class: "note" }, g.note) : "")));
+}
+function showGames(err) { renderGames(err); openDlg("gamesDlg"); }
 function openDlg(id) { const d = $("#" + id); if (d.showModal) d.showModal(); else d.setAttribute("open", ""); }
 function closeDlg(id) { const d = $("#" + id); d.close ? d.close() : d.removeAttribute("open"); }
 function saveSnapshot(name) {
@@ -2037,7 +2075,12 @@ function setRom(bytes, name) {
     }
     if (alt) { pendingSwitch = null; switchGame(alt); err = null; toast(`Switched to ${alt.game}.`); }
   }
-  if (err) { toast(err); return false; }
+  if (err) {
+    const nes = bytes.length > 16 && eqArr(Array.from(bytes.slice(0, 4)), [0x4E, 0x45, 0x53, 0x1A]), same = GAME_INFO.find(g => g.size === bytes.length);
+    const fp = nes ? ` (Your file: ${bytes.length.toLocaleString()} bytes, CRC32 ${crc32(bytes.subarray(16)).toString(16).toUpperCase().padStart(8, "0")}.)` : "";
+    const why = !nes ? "That file isn't an NES ROM." : same ? `That looks like a different version of ${same.title} than the one ROM Studio knows.` : "ROM Studio doesn't know that game yet.";
+    showGames(`${why}${fp} These are the ones that work:`); return false;
+  }
   S.rom = bytes; S.romName = name; LINKS = null;
   if (S.profile.player === "smb") setFrames(bytes.slice(GFX_TABLE, GFX_TABLE + 0xD0), Array.from(bytes.slice(SWIM_KICK, SWIM_KICK + 2)));
   for (const [id, m] of Object.entries(S.profile.palettes || {})) if (!m.same_as && !S.palEdited[id]) S.spritePals[id] = Array.from(bytes.slice(m.offset, m.offset + (m.count || 3)), hex2);
@@ -2150,6 +2193,9 @@ async function handleFiles(files) {
   } catch (e) { toast(e.message || String(e)); }
 }
 $("#btnRom").onclick = () => $("#fRom").click();
+$("#btnGames").onclick = () => showGames();
+$("#gamesOpen").onclick = () => { closeDlg("gamesDlg"); $("#fRom").click(); };
+$("#gamesClose").onclick = () => closeDlg("gamesDlg");
 $("#btnSkin1").onclick = () => $("#fSkin1").click();
 $("#btnSkin2").onclick = () => $("#fSkin2").click();
 $("#btnProj").onclick = () => $("#fProj").click();

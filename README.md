@@ -13,6 +13,19 @@ The command-line tools in `tools/` (Ruby, stdlib only) rebuild the same ROM from
 ---
 
 
+## Supported games
+
+Open one of these with **Open ROM…** and ROM Studio switches to that game (the **Games** button lists them too). You bring the ROM; nothing from the games is in this repo. Fingerprints are of the ROM without its 16-byte iNES header, as No-Intro lists them.
+
+| Game | ROM | Size | CRC32 | What you can edit |
+|---|---|---|---|---|
+| Super Mario Bros. | Super Mario Bros. (World) | 40,976 | `D445F698` | player rig, enemies & items, blocks, sounds, music, mechanics |
+| Mega Man 3 | Mega Man 3 (USA) | 393,232 | `603AAA57` | Mega Man & weapons, bosses, enemies, items, blocks, mechanics |
+| Super Mario Bros. 2 | Super Mario Bros. 2 (USA) (Rev 1) | 262,160 | `CA594ACE` | the four players (big & small), enemies, items, effects |
+| Contra | Contra (USA) | 131,088 | `F6035030` | Bill & Lance, weapons, enemies, bosses, all 8 levels' blocks, mechanics |
+
+Another revision or region of the same game has its code in different places, so it won't open until it has its own profile (for example the first release of SMB2, Rev 0).
+
 ## Workflow
 
 ```sh
