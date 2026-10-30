@@ -7,6 +7,7 @@ DEV = os.path.dirname(os.path.abspath(__file__)); REPO = os.path.dirname(DEV); T
 shutil.rmtree(T, ignore_errors=True); os.makedirs(T)
 SMB = os.environ.get("SMB_ROM") or sys.exit("Set SMB_ROM"); MM3 = os.environ.get("MM3_ROM")
 C = cynes; R, A, B, S, U = C.NES_INPUT_RIGHT, C.NES_INPUT_A, C.NES_INPUT_B, C.NES_INPUT_START, C.NES_INPUT_UP
+D, L = C.NES_INPUT_DOWN, C.NES_INPUT_LEFT
 errors = []
 def build(pw, rom, settings, tag):
     ctx = pw.new_context(accept_downloads=True); ctx.route("https://fonts.**/**", lambda r: r.abort())
@@ -99,6 +100,17 @@ def mm3_measure(path):
         for sl in set(last) - set(alive): last.pop(sl)
     o["shot_px_per_frame"] = max(set(speeds), key=speeds.count) if speeds else 0; o["most_shots"] = most
     return o
+def mm3_aim(path):  # first Mega Buster (or Shadow Blade) shot's movement over 3 frames for each held direction
+    out = {}
+    for lab, hold, weapon in [("none", 0, 0), ("up", U, 0), ("up+right", U | R, 0), ("down", D, 0), ("down+left", D | L, 0), ("blade up", U, 10), ("blade", 0, 10)]:
+        nes = mm3_boot(path)
+        if weapon: nes[0xA0] = weapon; nes[0xA2 + weapon] = 0x9C
+        tr = []
+        for t in range(90):
+            nes.controller = hold | (B if t < 2 else 0); nes.step(1)
+            if nes[0x301] & 0x80: tr.append((nes[0x381] * 256 + nes[0x361], nes[0x3E1] * 240 + nes[0x3C1]))
+        out[lab] = (tr[3][0] - tr[0][0], tr[3][1] - tr[0][1], len(tr)) if len(tr) > 3 else None
+    return out
 with sync_playwright() as p:
     pw = p.chromium.launch()
     smb = {}
@@ -120,6 +132,9 @@ with sync_playwright() as p:
         for tag, st in [("mm3_base", {}), ("mm3_floaty", {"gravity": 50, "jump": 150}), ("mm3_fast", {"speed": 150}), ("mm3_double", {"airjump": 1}), ("mm3_fly", {"airjump": 2, "jump": 150}), ("mm3_inv", {"invincible": True, "allweapons": True}), ("mm3_ammo", {"ammo": True, "power": 1000}),
                         ("mm3_weap", {"shotspeed": 150, "w0.shots": 1, "w1.cost": 0, "w1.dmg": 300, "power": 200, "w8.sound": 0x2E, "hitbox": 200})]:
             path, parity, same = build(pw, MM3, st, tag); mm[tag] = mm3_measure(path); mm[tag]["ruby"] = parity; mm[tag]["roundtrip"] = same
+        for tag, st in [("mm3_aim", {"aim": True}), ("mm3_aim_fast", {"aim": True, "shotspeed": 150})]:
+            path, parity, same = build(pw, MM3, st, tag); mm[tag] = {"aim": mm3_aim(path), "ruby": parity, "roundtrip": same}
+        mm["mm3_base"]["aim"] = mm3_aim(f"{T}/mm3_base.nes")
         for k, v in mm.items(): print(k, v)
         b = mm["mm3_base"]; rom = open(f"{T}/mm3_ammo.nes", "rb").read(); orig = open(MM3, "rb").read(); wr = open(f"{T}/mm3_weap.nes", "rb").read()
         F3 = lambda bank, a: 0x10 + bank * 0x2000 + (a & 0x1FFF)
@@ -146,6 +161,10 @@ with sync_playwright() as p:
                        "MM3 Gemini costs nothing (only Gemini)": mm["mm3_weap"]["gemini_left"] == 28,
                        "MM3 per-weapon damage compounds with power": weap_dmg_ok(),
                        "MM3 Spark sound + bigger target boxes": weap_bytes_ok(),
+                       "MM3 aim: up/down/diagonal shots (off: always straight); blade keeps returning": all(v[1] == 0 for k, v in b["aim"].items() if k.startswith(("none", "up", "down")))
+                           and (lambda a: a["none"][:2] == (12, 0) and a["up"][:2] == (0, -12) and a["up+right"][:2] == (12, -12) and a["down"][:2] == (0, 12) and a["down+left"][:2] == (-12, 12)
+                                and a["blade up"] == b["aim"]["blade up"] and a["blade"] == b["aim"]["blade"])(mm["mm3_aim"]["aim"])
+                           and mm["mm3_aim_fast"]["aim"]["up+right"][:2] == (18, -18),
                        "MM3 Ruby parity + round trip": all(v["ruby"] and v["roundtrip"] for v in mm.values())})
     pw.close()
 for k, v in checks.items(): print(("PASS " if v else "FAIL ") + k)

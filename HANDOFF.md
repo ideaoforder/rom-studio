@@ -52,6 +52,14 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
   - SMB Double: ProcJumping ($B48B–$B49F) is rewritten in place. The on-ground check is dropped, the swim rules are kept, and non-swimming jumps `JSR $92AA`. That is the residual DoNothing1, now `LDA $EE; INC $EE; LSR A; RTS`, which allows a jump while $EE < 2. Landing calls `JSR $F2CA` (6 unused bytes before SoundEngine) in place of `STA StompChainCounter`, which does that store plus `STA $EE`. It runs on every grounded frame. RAM $EE is otherwise unused. The ground jump counts as 1, so walking off a ledge gives 2 air jumps. Unlimited = the old flap NOPs.
   - MM3: the air state's `JSR $D355` at $D0CC becomes `JSR $F0D9` (the space of a controller-2 debug pit bounce, disabled at $F0BE). On a new A press with $7F == 0 it sets `$7F` and jumps to $CEC0 (the space of the controller-2 debug super jump), which loads the speed from the normal jump's own operands ($CEB4/$CEB9), so it follows Jump height. The state-0 pointer ($CD9A/$CDB0) goes to a wrapper at $F0E9, `STY $7F; JMP $CE36` (Y = state = 0), to reset on the ground. The jump entry $CEAD clears bit 7 of $14 (`ASL $14; LSR $14`), so the ground-jump frame can't also air-jump. Unlimited skips the `INC $7F`.
 
+- **Aim the Mega Buster** (`aim` toggle, MM3). The buster borrows Shadow Blade's code, which already throws in the held direction.
+  - The buster's init pointer ($D303/$D30F) goes to `init_shadow_blade`, and its main ID ($D32F) becomes $88 (`main_shadow_blade`, which moves by `$04A0` bits: 1 right, 2 left, 4 down, 8 up). The pellet OAM, sound, damage and shot count still come from the buster, because they key on `$A0`.
+  - The blade's direction mask `AND #$0B` becomes `#$0F`, so down is allowed. That means Shadow Blade can be thrown down too.
+  - The blade's return timer (`LDA #$14 / STA $0500,y` at $D2EB) becomes `JSR $F150`. That routine sets it only when `$A0` isn't 0, so buster shots never turn back. $F150 is the space of a controller-2 slow-motion debug check at $F14D, skipped with `JMP $F15F`.
+  - Aimed shots start from Mega Man's middle (the blade's spawn point), and he keeps the forward shooting pose.
+  - Shot speed now also scales the blade init's Y speed ($D2E2/$D2E7), so aimed shots stay as fast as straight ones.
+  - Checked by `test_mechanics.py`: ±12 px over 3 frames in each direction, Shadow Blade unchanged, and 18 at 150%.
+
 ## Super Mario Bros. 2 (USA, Rev 1 / PRG1)
 
 `SMB2_PROFILE`: MMC3, 128 KB PRG + 128 KB CHR (262,160 bytes). It's built by `dev/gen_smb2/` from the Xkeeper0/smb2 disassembly, which rebuilds PRG1 byte for byte. PRG0 differs in 8,000+ bytes, so detection checks a PRG1-only byte run, and PRG0 is unsupported for now.
