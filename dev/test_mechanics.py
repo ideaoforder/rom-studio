@@ -105,10 +105,11 @@ def mm3_aim(path):  # first Mega Buster (or Shadow Blade) shot's movement over 3
     for lab, hold, weapon in [("none", 0, 0), ("up", U, 0), ("up+right", U | R, 0), ("down", D, 0), ("down+left", D | L, 0), ("blade up", U, 10), ("blade", 0, 10)]:
         nes = mm3_boot(path)
         if weapon: nes[0xA0] = weapon; nes[0xA2 + weapon] = 0x9C
-        tr = []
+        tr = []; sl = None
         for t in range(90):
             nes.controller = hold | (B if t < 2 else 0); nes.step(1)
-            if nes[0x301] & 0x80: tr.append((nes[0x381] * 256 + nes[0x361], nes[0x3E1] * 240 + nes[0x3C1]))
+            if sl is None: sl = next((k for k in (3, 2, 1) if nes[0x300 + k] & 0x80), None)  # the first free slot from the top
+            if sl and nes[0x300 + sl] & 0x80: tr.append((nes[0x380 + sl] * 256 + nes[0x360 + sl], nes[0x3E0 + sl] * 240 + nes[0x3C0 + sl]))
         out[lab] = (tr[3][0] - tr[0][0], tr[3][1] - tr[0][1], len(tr)) if len(tr) > 3 else None
     return out
 with sync_playwright() as p:
