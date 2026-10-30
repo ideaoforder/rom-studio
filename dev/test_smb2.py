@@ -33,8 +33,12 @@ with sync_playwright() as p:
       const shy = sg.frames['frame 1'].slots.find(q => q.idx >= 0xC0 && q.idx < 0x100);
       for (const q of [body, eye, shy]) S.chrEdits[q.off] = tileAt(q.off).map((r, y) => r.map((v, x) => y === 4 ? 3 : v));
       S.spritePals['player.mario'] = ['01', '2A', '27']; S.palEdited['player.mario'] = true;
-      S.spritePals['w1.1'] = ['30', '12', '0F']; S.palEdited['w1.1'] = true; objChanged();
-      return { body: body.off, eye: eye.off, shy: shy.off }; })()""")
+      S.spritePals['w1.1'] = ['30', '12', '0F']; S.palEdited['w1.1'] = true;
+      const wart = S.objs.find(o => o.name === 'Wart').frames.stand.slots.find(q => q && tileAt(q.off).some(r => r.some(v => v)));
+      const blk = S.objs.find(o => o.name.startsWith('World 7')).frames['palette 1'].slots.find(q => q && tileAt(q.off).some(r => r.some(v => v)));
+      for (const q of [wart, blk]) S.chrEdits[q.off] = tileAt(q.off).map(r => r.map(v => v ? 3 - v : 0));
+      S.spritePals['w7.bg1'] = ['2A', '1A', '0F']; S.palEdited['w7.bg1'] = true; objChanged();
+      return { body: body.off, eye: eye.off, shy: shy.off, wart: wart.off, blk: blk.off }; })()""")
     links = dict((int(k), v) for k, v in pg.evaluate("[...chrLinks()]"))
     print("copies that follow: eyes", len(links.get(edits["eye"], [])), "| shyguy", len(links.get(edits["shy"], [])), "| Mario body", len(links.get(edits["body"], [])))
     selected = pg.evaluate("selectObj(S.objs.findIndex(o => o.name === 'Birdo')); [curObj().name, palRows(curObj())[0].label]")
@@ -51,6 +55,9 @@ with sync_playwright() as p:
     rb = open(f"{T}/x/{cfg['output']}", "rb").read()
     follow = all(rb[m:m + 16] == rb[t:t + 16] for t in edits.values() for m in links.get(t, []))
     cp = 0x10 + 5 * 0x4000 + (0x8429 & 0x3FFF)
+    enc = lambda px: bytes(sum(((px[y][x] & 1) << (7 - x)) for x in range(8)) for y in range(8)) + bytes(sum(((px[y][x] >> 1) << (7 - x)) for x in range(8)) for y in range(8))
+    want = {int(k): v for k, v in pg.evaluate("Object.fromEntries(Object.entries(chrEditsWithLinks()))").items()}
+    print("Wart + World 7 block tiles written:", all(rb[o:o + 16] == enc(want[o]) for o in (edits["wart"], edits["blk"])), "| bosses:", groups.get("Bosses"), "| worlds:", groups.get("Worlds"))
     print("JS == Ruby:", js == rb, "| bytes changed:", sum(1 for i in range(len(rom)) if rom[i] != rb[i]), "| copies follow:", follow, "| Mario palette:", rb[cp:cp + 4].hex())
     pg2 = ctx.new_page(); pg2.on("pageerror", lambda e: errors.append(str(e)))
     pg2.goto(f"file://{REPO}/index.html"); pg2.wait_for_timeout(500)

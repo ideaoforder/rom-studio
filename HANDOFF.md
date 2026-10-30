@@ -76,7 +76,21 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
   - Checked against live OAM over about 6,300 frames; the only mismatches were screen-edge wrap.
 - **Enemies and items.** `EnemyTilemap1/2` groups. Size comes from `ObjectAttributeTable` (16x32, Horizontal, Mirrored). Palettes come from the types whose `EnemyAnimationTable` offset falls in the group. Birdo's are pink 3, red 1 and gray 2 (`Enemy_Birdo_Attributes`). The rocket is drawn by hand as 32×32, as `RenderSprite_Rocket` does.
 - **Areas.** World 1–7, using each world's overworld sprite palettes (`World{n}SpritePalettes` + 1). The sky is the day background color. The underground and boss sets aren't exposed yet.
-- **Next:** bosses (Mouser, Tryclyde, Fryguy, Clawgrip, Wart, Hawkmouth boss; these use tilemap 2 and `BossTileset` BG banks), blocks, mechanics, character-select sprites.
+- **Bosses** (`build_bosses.py`). Mouser, Tryclyde, Fryguy, Clawgrip and Wart, plus Mouser's bomb, Clawgrip's rock and Wart's bubbles.
+  - Their tilemap-2 tiles are odd, so they come from the background pattern table. Each boss lives in its home world's background bank: grass $10, desert $12, ice $14, Clawgrip's $0A, sky $16.
+  - Layouts follow the `RenderSprite_*` routines. Clawgrip's right half is the mirrored second frame 16 px over.
+  - Tryclyde is approximate: the body, the tail 8 px left and below, and two heads to the left. The game moves the heads on a wobble table and draws necks between them.
+- **Blocks** (`build_blocks.py`). Per world, every map tile from `TileQuads1`–`4`: each table is one palette, quads are TL TR BL BR, $00–$7F come from the world's background bank and $80–$FF from the animated bank. Background palettes `w{n}.bg0`–`bg3` are the daytime set of `World{n}BackgroundPalettes`. There are no level screens yet.
+- **Mechanics** (`mech.py`, checked by `dev/test_smb2_mech.py`):
+  - **Invincible:** `SBC #$10` becomes `SBC #0` in `DamagePlayer` and `PlayerTileCollision_HurtPlayer`. Falling still kills.
+  - **Infinite lives:** `DEC ExtraLives` in `LoseALife` becomes `LDA`.
+  - **Lives at the start:** the `LDA #$03` in `ContinueGame`.
+  - **Jump height, gravity, run speed:** the per-character stat tables (Mario, Toad, Luigi, Princess, 23 bytes each). The game copies them to RAM when you pick a character. Jump speeds use sqrt scaling, run speeds are signed.
+  - **Everyone can float:** copies the Princess's float time into the other three.
+  - **Air jumps:** `LDA PlayerInAir` in the crouch/jump routine ($8C1D) becomes `JSR $FB40`, in the original's unused space at $FB36–$FDFF.
+    - On the ground, the hook clears a count at $055D (the RAM map's "FOR RENT" byte) and carries on.
+    - In the air, a new A press bumps the count and calls `PlayerStartJump` plus the jump sound, then jumps to the in-air path ($8C63). For Double jump, a count of 1 blocks further jumps.
+- **Next:** level screens, character-select sprites, Rev 0.
 
 ## Contra (USA)
 
@@ -159,7 +173,7 @@ export SMB_ROM="/path/to/Super Mario Bros. (World).nes"   # never commit it
 | `test_capture.py` | `tools/sprite_capture.lua` logic (lupa) |
 | `sfx_compare.js`, `music_test.js` | node versions of the model-vs-engine checks (`sfx_model.js`, `music_model.js`) |
 
-Other games: `MM3_ROM`, `SMB2_ROM`, `CONTRA_ROM` and `CV_ROM` add `test_mm3`…, `test_smb2`, `test_contra(_mech)` and `test_castlevania(_mech)`.
+Other games: `MM3_ROM`, `SMB2_ROM`, `CONTRA_ROM` and `CV_ROM` add `test_mm3`…, `test_smb2(_mech)`, `test_contra(_mech)` and `test_castlevania(_mech)`.
 
 Each test writes scratch output to `dev/<name>_test/` (ignored by git).
 

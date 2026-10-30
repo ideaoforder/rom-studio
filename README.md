@@ -21,7 +21,7 @@ Open one of these with **Open ROM…** and ROM Studio switches to that game (the
 |---|---|---|---|---|
 | Super Mario Bros. | Super Mario Bros. (World) | 40,976 | `D445F698` | player rig, enemies & items, blocks, sounds, music, mechanics |
 | Mega Man 3 | Mega Man 3 (USA) | 393,232 | `603AAA57` | Mega Man & weapons, bosses, enemies, items, blocks, mechanics |
-| Super Mario Bros. 2 | Super Mario Bros. 2 (USA) (Rev 1) | 262,160 | `CA594ACE` | the four players (big & small), enemies, items, effects |
+| Super Mario Bros. 2 | Super Mario Bros. 2 (USA) (Rev 1) | 262,160 | `CA594ACE` | the four players (big & small), enemies, items, bosses, every world's blocks, mechanics |
 | Contra | Contra (USA) | 131,088 | `F6035030` | Bill & Lance, weapons, enemies, bosses, all 8 levels' blocks, mechanics |
 | Castlevania | Castlevania (USA) (Rev 1) | 131,088 | `B668C7FC` | Simon, whip & subweapons, items, enemies, bosses, every stage's background, mechanics |
 
