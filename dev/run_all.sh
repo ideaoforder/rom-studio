@@ -10,4 +10,5 @@ if [ -n "$MM3_ROM" ]; then for t in test_mm3 test_mm3_rush test_tile_inspector t
 if [ -n "$SMB2_ROM" ]; then for t in test_smb2 test_smb2_mech; do echo "== $t"; python3 "$t.py" || status=1; done; fi
 if [ -n "$CONTRA_ROM" ]; then for t in test_contra test_contra_mech; do echo "== $t"; python3 "$t.py" || status=1; done; fi
 if [ -n "$CV_ROM" ]; then for t in test_castlevania test_castlevania_mech; do echo "== $t"; python3 "$t.py" || status=1; done; fi
+if [ -n "$ZELDA_ROM" ]; then for t in test_zelda test_zelda_mech; do echo "== $t"; python3 "$t.py" || status=1; done; fi
 exit $status

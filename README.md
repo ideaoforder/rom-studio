@@ -24,6 +24,7 @@ Open one of these with **Open ROM…** and ROM Studio switches to that game (the
 | Super Mario Bros. 2 | Super Mario Bros. 2 (USA) (Rev 1) | 262,160 | `CA594ACE` | the four players (big & small), enemies, items, bosses, every world's blocks, mechanics |
 | Contra | Contra (USA) | 131,088 | `F6035030` | Bill & Lance, weapons, enemies, bosses, all 8 levels' blocks, mechanics |
 | Castlevania | Castlevania (USA) (Rev 1) | 131,088 | `B668C7FC` | Simon, whip & subweapons, items, enemies, bosses, every stage's background, mechanics |
+| The Legend of Zelda | Legend of Zelda, The (USA) (Rev 1) | 131,088 | `EAF7ED72` | Link, enemies, bosses, items & NPCs, the overworld and every level's tiles, mechanics (incl. a starting kit) |
 
 Another revision or region of the same game has its code in different places, so it won't open until it has its own profile (for example the first release of SMB2, Rev 0).
 

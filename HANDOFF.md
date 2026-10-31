@@ -144,6 +144,27 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
   - **Jump height:** the jump table at `$9B90`, signed. The walker plays it forward, then mirrored for the fall. `$F8` means "hold" and `$80`/`$81` are markers, so the most per frame is 7.
   - **Air jumps:** the jump state's `LDA #0 / JSR $9B1E` goes through `$BA60`. It clears a counter at `$07E0` (unreferenced RAM) on a jump's first frame. A new A press restarts the table going up.
 
+## The Legend of Zelda (USA) (Rev 1)
+
+`ZELDA_PROFILE`: MMC1, 128 KB PRG, **CHR-RAM** with the art stored raw in PRG, like Castlevania. It's the first top-down game, so "blocks" are the overworld and the nine levels instead of stages. `dev/gen_zelda/` uses the aldonunez/zelda1-disassembly (PRG0) for labels and `bins.xml` offsets. Those offsets are the same in Rev 1, and everything is checked against the Rev 1 ROM and cynes. Only Rev 1 (PRG1) is supported. The gold-cart first release (PRG0) isn't.
+
+- **Graphics.** CHR-RAM per area = a common set (`$0000`, `$1000`, `$1F20`, plus the title's demo sprites at `$0700`) and then either the overworld set or the underworld set, plus each level's "special" (`$09E0`) and boss (`$0C00`) sets. The table is in `gfx.py`. All 10 areas match the game's CHR-RAM in cynes save states exactly (CHR-RAM at state offset 994, nametable 0 at 17378).
+- **Sprites.** The animation tables are found by pattern (`anims.py`): the frame-start table, a heap of tiles, and an attribute heap (`0xCC` long). Most enemies are drawn as a left tile plus a mirrored or second right tile. `mirrored_guess` decides which, and `objects_def.py` overrides it where it guesses wrong.
+  - Aquamentus and Ganon come from their own frame tables. Ganon's right column is the left one flipped.
+  - Items use the item tile and palette tables. Narrow items (`$20`–`$61`, `$F3`) are one column. Slim ones are mirrored 7 px apart.
+- **Palettes.** `LevelInfo` blocks (overworld, then 252 bytes per level) start with `3F 00 20` and then 32 bytes. `spr.0`–`spr.2` are shared, mirrored into every area with identical bytes. Level 3 has its own Link row. `{area}.3` and the four background rows are per area.
+- **Blocks.** "Overworld" has eight rooms captured in cynes, by booting a copy of the ROM whose LevelInfoOW start room (`+0x2F`) is changed. Each level has its entrance room (warp: `$10` = level, `$12` = 2, `$11` = `$13` = 0). Each block also has a tile sheet. The playfield is nametable rows 8–29.
+- **Mechanics** (`mech.py`, checked by `dev/test_zelda_mech.py`):
+  - **Invincible:** in `Link_BeHarmed`, after the ring halves the damage, `LDA HeartPartial` becomes `RTS`. The hurt sound and the shove still happen.
+  - **Damage:** `ObjTypeToDamagePoints` (93 bytes: the low nibble is whole hearts, the high nibble is 16ths) is rescaled. Entry 0 is the `RTS` of the routine before it, so it's left alone.
+  - **Sword beam at any health:** NOPs the two full-health branches.
+  - **Bombs never run out:** `DEC InvBombs` becomes `LDA`.
+  - **Walking speed:** the `LDA #$60` in `InitLinkSpeed`, in quarter-pixel units. Each movement step adds at most 1 px, so `$80` and `$A0` both give 2 px a frame.
+  - **Starting kit:** register mode's `LDY #$25 / LDA #8 / STA ($C0),Y` (new file's max bombs) becomes `JSR $AF90` + NOPs. `$AF90` is bank 2 free space. It saves X (the save slot) and writes (slot, value) pairs from a table at `$AFB0` into the new file's items, up to `$FF`.
+    - Every pair starts as a vanilla write: max bombs 8, hearts `$22`, and zeros for the rest. Each knob owns one value byte, so knobs combine freely.
+    - Toggles can now have `install` too: the engine writes it when the toggle is on.
+    - Kit changes only reach files registered after patching.
+
 ## ROM facts (SMB World, NROM)
 
 16-byte header, PRG at 0x10, CHR at 0x8010 (sprites) / 0x9010 (BG). File offset = addr − 0x8000 + 0x10. Labels from the Xkeeper0 smb1 disassembly. Key ones: `Palette0_MTiles` $8B10, `Palette3Data` $89D1, `ColorRotatePalette` $89C3, `BackgroundColors` $85CF, `PowerUpGfxTable` $E6BE, SoundEngine $F2D0.
