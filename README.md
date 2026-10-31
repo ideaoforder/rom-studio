@@ -1,6 +1,6 @@
 # ROM Studio
 
-A browser workbench for reskinning NES games. **Super Mario Bros.**: the player, enemies and items, blocks, sound effects and music. **Mega Man 3**: Mega Man (25 frames, palettes per weapon), the 8 robot masters, 64 enemies, item pickups, and each stage's blocks.
+A browser workbench for reskinning NES games. **Super Mario Bros.**: the player, enemies and items, blocks, sound effects and music. **Mega Man 3**: Mega Man (25 frames, palettes per weapon), Rush (Coil, Marine and Jet), the 8 robot masters, 64 enemies, item pickups, and each stage's blocks.
 
 **Mechanics** (both games): invincibility, jump height, gravity, speed, and more. SMB adds grip (ice physics), flap-to-fly, infinite lives and Bowser's health. Mega Man 3 adds infinite weapon energy and weapon power.
 
@@ -20,7 +20,7 @@ Open one of these with **Open ROM…** and ROM Studio switches to that game (the
 | Game | ROM | Size | CRC32 | What you can edit |
 |---|---|---|---|---|
 | Super Mario Bros. | Super Mario Bros. (World) | 40,976 | `D445F698` | player rig, enemies & items, blocks, sounds, music, mechanics |
-| Mega Man 3 | Mega Man 3 (USA) | 393,232 | `603AAA57` | Mega Man & weapons, bosses, enemies, items, blocks, mechanics |
+| Mega Man 3 | Mega Man 3 (USA) | 393,232 | `603AAA57` | Mega Man & weapons, Rush, bosses, enemies, items, blocks, mechanics |
 | Super Mario Bros. 2 | Super Mario Bros. 2 (USA) (Rev 1) | 262,160 | `CA594ACE` | the four players (big & small), enemies, items, bosses, every world's blocks, mechanics |
 | Contra | Contra (USA) | 131,088 | `F6035030` | Bill & Lance, weapons, enemies, bosses, all 8 levels' blocks, mechanics |
 | Castlevania | Castlevania (USA) (Rev 1) | 131,088 | `B668C7FC` | Simon, whip & subweapons, items, enemies, bosses, every stage's background, mechanics |
