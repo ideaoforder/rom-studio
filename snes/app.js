@@ -198,7 +198,7 @@ function renderPalettes() {
     for (let i = 0; i < 16; i++) {
       const w = colorWord(pi, i), usable = i > 0 && w != null;
       row.append(el("button", { type: "button", class: "sw" + (i === 0 ? " clear" : "") + (w == null ? " off" : "") + (p.colors[i] == null && i ? " locked" : ""),
-        style: i && w != null ? `background:${css(w)}` : null, "aria-pressed": String(S.sel.pal === pi && S.sel.idx === i),
+        style: i && w != null ? `background:${css(w)}` : null, "data-pi": i && w != null ? pi : null, "data-i": i, "aria-pressed": String(S.sel.pal === pi && S.sel.idx === i),
         title: i === 0 ? "See-through (eraser)" : w == null ? "Not used here" : p.colors[i] == null ? "Set by the game's code (can paint with it, can't change it)" : `Colour ${i}`,
         onclick: () => { if (!usable && i) return; S.sel = { pal: pi, idx: i }; renderPalettes(); } }));
     }
@@ -252,7 +252,26 @@ function painterEvents() {
   c.addEventListener("pointerup", end); c.addEventListener("pointercancel", end);
 }
 function renderTools() { document.querySelectorAll("#toolSeg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.tool === S.tool))); }
+// While the colour picker is open, show the colour everywhere it's used without saving or adding undo steps;
+// the picker's "change" (closing it, or letting go) commits it as one undo step.
+let preview = null; // {off, had, was}: the colour edit as it was before the preview
+function previewColor(hex) {
+  const off = pal(S.sel.pal).colors[S.sel.idx]; if (off == null) return;
+  if (!preview || preview.off !== off) { endPreview(); preview = { off, had: off in S.colors, was: S.colors[off] }; }
+  S.colors[off] = SnesColor.hex(SnesColor.fromCss(hex));
+  if (!previewColor.raf) previewColor.raf = requestAnimationFrame(() => { previewColor.raf = 0; renderPainter(); renderFrames(); renderSwatches(); renderList(); });
+}
+function endPreview() {
+  if (!preview) return;
+  if (preview.had) S.colors[preview.off] = preview.was; else delete S.colors[preview.off];
+  preview = null;
+}
+function renderSwatches() { // recolour the palette swatches in place (re-rendering would reset the open picker)
+  document.querySelectorAll("#palRows .sw[data-pi]").forEach(b => { const w = colorWord(+b.dataset.pi, +b.dataset.i); if (w != null) b.style.background = css(w); });
+  const w = colorWord(S.sel.pal, S.sel.idx); if (w != null) $("#colorOut").textContent = `$${SnesColor.hex(w)}`;
+}
 function setColor(hex) {
+  endPreview();
   const off = pal(S.sel.pal).colors[S.sel.idx]; if (off == null) return;
   const w = SnesColor.fromCss(hex); if (w === colorWord(S.sel.pal, S.sel.idx)) return;
   checkpoint(); if (w === SnesColor.read(S.rom, off)) delete S.colors[off]; else S.colors[off] = SnesColor.hex(w); changed();
@@ -297,6 +316,7 @@ function init() {
   $("#dlDlg").addEventListener("close", () => { if ($("#dlDlg").returnValue === "ok") doDownload(); });
   document.querySelectorAll("#tabs button").forEach(b => { b.onclick = () => { S.tab = b.dataset.tab; S.obj = 0; S.frame = 0; S.zoom = 0; render(); }; });
   document.querySelectorAll("#toolSeg button").forEach(b => { b.onclick = () => { S.tool = b.dataset.tool; renderTools(); }; });
+  $("#colorIn").addEventListener("input", e => previewColor(e.target.value));
   $("#colorIn").addEventListener("change", e => setColor(e.target.value));
   document.addEventListener("keydown", e => {
     if (e.target.matches("input, textarea, select")) return;
