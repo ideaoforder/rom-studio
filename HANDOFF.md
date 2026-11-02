@@ -165,6 +165,42 @@ Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, sp
     - Toggles can now have `install` too: the engine writes it when the toggle is on.
     - Kit changes only reach files registered after patching.
 
+## SNES: Super Mario World (USA)
+
+The SNES editor is its own page (`snes/`), so the NES page didn't change except for a link. CONTRIBUTING.md has the layout and the profile format. The pieces:
+
+- **Formats** (`snes/lib/`):
+  - `lz2.js`: Nintendo LZ2. The encoder is greedy and deterministic: at each position it takes the command that saves the most bytes (repeat, byte fill, word fill, increasing fill), ties going in that order, with literals otherwise. It finds repeats through hash chains on 3-byte keys and takes the earliest of the longest matches.
+  - `tiles.js`: planar tiles. "3" is SMW's 24-byte 3bpp form.
+  - `color.js`: BGR555.
+  - `rom.js`: LoROM, matching, decoding, and `build()`.
+  - `tools/snes_build.rb` and `dev/snes/lz2.py` / `tiles.py` mirror these byte for byte. `test_smw.py` checks all three encoders on all 52 files.
+- **Build:** an edited file is re-encoded. If it fits its old space it goes back in place. If any doesn't fit, all 52 files are re-encoded and packed from `$08:8000` in ROM order (GFX32, GFX33, GFX00–31), and the pointers are rewritten:
+  - the three GFX tables at `$00:B992/B9C4/B9F6`;
+  - GFX33's `LDY #`/`LDA #bank` in `CODE_00B888`;
+  - GFX32's `LDA #$8000`;
+  - the `dl` pair at `$00:B882`.
+  - GFX32's bank is whatever bank GFX33's read ended in, so GFX33 must end inside bank 08 (`max_end`). Our encoder is 6,591 bytes smaller than Nintendo's over all files, which is the room edits grow into. The header checksum is fixed.
+- **Graphics facts:**
+  - GFX00–31 are 3bpp in ROM. The upload (`UploadGFXFile`) makes 4bpp, and plane 3 is either 0 (colours 0–7) or the OR of the other planes (colours 8–15). The second form applies to GFX01/17 tiles $6E–6F/$7E–7F, to tileset ≥ $11's file 08, and to file 1E. Parts carry flag 4 for colours 8–15.
+  - GFX32 (Mario, Yoshi and others) is 4bpp, decompressed to `$7E:2000` at boot and DMAed per pose.
+  - Sprite tiles are at VRAM `$C000`: SP1–SP4 = `$0104..$0101`, reversed.
+  - Layer 1/2 tilemaps are 64×64 at VRAM `$4000`/`$6000`, and BG tiles are at `$0000`.
+- **Palettes:** `smw.py`'s `cgram_sources` models `LoadPalette`. It matches live CGRAM in every level checked, except the animated colours. Colour 1 of every palette is an immediate in `LoadPalette` (`LDA #$7FFF` sprites, `#$7FDD` background), and the profile points at those operands. The backdrop is `BackAreaColors[header]`.
+- **Frames are captured, not hand-built.** Mario's poses come from a scratch ROM whose draw routine reads the pose from `$1B97`. Sprites are OAM groups per slot while Mario hovers through every level. Items are spawned into slot 9. Everything is mapped back to (file, tile) by matching VRAM bytes, so it's right by construction. Bosses mostly live behind doors and in Mode 7, so few are captured yet.
+- **Mechanics** (`dev/gen_smw/mech.py`, checked by `dev/test_smw_mech.py` in play):
+  - **Invincible:** `HurtMario` starts with `RTL`.
+  - **Infinite lives:** `DEC PlayerLives` becomes `LDA`.
+  - **Lives at the start:** the new-game `LDA #4`, with a bias of −1.
+  - **Timer stands still:** `DEC InGameTimerFrames` becomes `LDA`.
+  - **Jump height:** the 16 take-off speeds at `$00:D2BD`, signed, sqrt-scaled.
+  - **Start as …:** two hooks in `$00:FF93`, replacing `STZ Powerup` in `MarioDeathAni` and in the new-game setup.
+- **Emulator notes** (`dev/snes/emu.py`):
+  - In the Snes9x v9 snapshot, CGRAM is at PPU block +63 as big-endian words, and OAM is at +2002.
+  - stable-retro allows one emulator per process. `SNES()` closes the previous one.
+  - To force a level, set `$0109` = translevel and game mode `$0B` from the map. Levels $101+ need the scratch ROM (`capture_levels.submap_rom`).
+- **Next:** bosses (Koopalings, Bowser, Reznor), Yoshi colours, the overworld, more mechanics (run speed, gravity, cape flight).
+
 ## ROM facts (SMB World, NROM)
 
 16-byte header, PRG at 0x10, CHR at 0x8010 (sprites) / 0x9010 (BG). File offset = addr − 0x8000 + 0x10. Labels from the Xkeeper0 smb1 disassembly. Key ones: `Palette0_MTiles` $8B10, `Palette3Data` $89D1, `ColorRotatePalette` $89C3, `BackgroundColors` $85CF, `PowerUpGfxTable` $E6BE, SoundEngine $F2D0.

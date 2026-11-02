@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="ROM Studio SNES">
+<title>ROM Studio SNES</title>
+<link rel="icon" href="../favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@400;600&family=Silkscreen&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <div class="brand"><span class="led"></span><h1>ROM Studio</h1><small>SNES</small></div>
+    <span class="chip" id="romChip">No ROM yet</span>
+    <div class="actions">
+      <button class="btn" id="btnRom" type="button">Open ROM…</button>
+      <button class="btn" id="btnProj" type="button">Open project…</button>
+      <button class="btn" id="btnUndo" type="button" title="Undo (Ctrl+Z)" disabled>Undo</button>
+      <button class="btn" id="btnRedo" type="button" title="Redo (Ctrl+Shift+Z)" disabled>Redo</button>
+      <button class="btn primary" id="btnSave" type="button" disabled>Download</button>
+      <a class="btn" href="../" title="The NES editor">NES games</a>
+    </div>
+    <input type="file" id="fRom" accept=".sfc,.smc,.bin" hidden>
+    <input type="file" id="fProj" accept=".zip,.json" hidden>
+  </header>
+
+  <nav class="seg" id="tabs" aria-label="Views">
+    <button type="button" data-tab="sprites" aria-pressed="true">Sprites</button>
+    <button type="button" data-tab="blocks" aria-pressed="false">Blocks</button>
+    <button type="button" data-tab="mech" aria-pressed="false">Mechanics</button>
+  </nav>
+
+  <section id="welcome" class="panel">
+    <div class="empty">
+      <p><strong>Open your SNES ROM to start.</strong> Nothing from the games is in ROM Studio, so you bring the ROM.</p>
+      <p id="gamesList"></p>
+    </div>
+  </section>
+
+  <section class="bench" id="viewArt" hidden>
+    <aside class="panel">
+      <div class="ph"><h2 id="listTitle">Sprites</h2><span class="hint" id="listHint"></span></div>
+      <div id="objList"></div>
+    </aside>
+    <main class="panel">
+      <div class="ph"><h2 id="objTitle">—</h2><span class="hint" id="frameHint"></span></div>
+      <div id="frames"></div>
+      <div class="tools">
+        <div class="seg" id="toolSeg" aria-label="Tool">
+          <button type="button" data-tool="pen" aria-pressed="true">Pencil</button>
+          <button type="button" data-tool="fill" aria-pressed="false">Fill</button>
+          <button type="button" data-tool="pick" aria-pressed="false">Pick colour</button>
+        </div>
+        <div class="seg" id="zoomSeg" aria-label="Zoom"></div>
+        <span class="hint" id="tileHint"></span>
+      </div>
+      <div class="well"><canvas id="painter" width="16" height="16"></canvas></div>
+      <p class="hint">Tiles are shared: painting a tile changes it everywhere the game uses it (other frames, other sprites, Luigi too).</p>
+    </main>
+    <aside class="panel" id="palPanel">
+      <div class="ph"><h2>Colours</h2><span class="hint" id="palHint"></span></div>
+      <div id="palRows"></div>
+      <div class="colorbox">
+        <input type="color" id="colorIn" aria-label="Change the selected colour">
+        <output id="colorOut"></output>
+      </div>
+      <p class="hint" id="colorHelp">Pick a colour to paint with. Change it here to recolour everything that uses it.</p>
+    </aside>
+  </section>
+
+  <section class="panel" id="viewMech" hidden>
+    <div class="ph"><h2>Mechanics</h2><span class="hint" id="mechHint"></span></div>
+    <div class="presets" id="mechPresets"></div>
+    <div id="mechList"></div>
+  </section>
+</div>
+
+<dialog id="dlDlg">
+  <form method="dialog">
+    <h2 style="margin-top:0">Download</h2>
+    <label class="label" for="dlName">Name</label>
+    <input type="text" id="dlName" autocomplete="off">
+    <p class="hint" id="dlFiles"></p>
+    <p style="display:flex;gap:8px;justify-content:flex-end;margin-bottom:0">
+      <button class="btn" value="cancel">Cancel</button>
+      <button class="btn primary" value="ok" id="dlGo">Download</button>
+    </p>
+  </form>
+</dialog>
+<div class="toast" id="toast" hidden></div>
+
+<!-- shared helpers, the SNES format layer, then one file per supported game, then the app -->
+<script src="../lib/files.js"></script>
+<script src="../lib/mechanics.js"></script>
+<script src="lib/lz2.js"></script>
+<script src="lib/tiles.js"></script>
+<script src="lib/color.js"></script>
+<script src="lib/rom.js"></script>
+<script>window.SNES_PROFILES = [];</script>
+<script src="profiles/smw.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

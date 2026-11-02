@@ -4,7 +4,7 @@ A browser workbench for reskinning NES games. **Super Mario Bros.**: the player,
 
 **Mechanics** (both games): invincibility, jump height, gravity, speed, and more. SMB adds grip (ice physics), flap-to-fly, infinite lives and Bowser's health. Mega Man 3 adds infinite weapon energy and weapon power.
 
-**Open it:** https://ideaoforder.github.io/rom-studio/ (works on iPad, too).
+**Open it:** https://ideaoforder.github.io/rom-studio/ (works on iPad, too). SNES games have their own page: https://ideaoforder.github.io/rom-studio/snes/
 
 Bring your own ROM: open a legally dumped *Super Mario Bros. (World)* or *Mega Man 3 (USA)* `.nes` file; the page picks the game from the ROM. Nothing from the game is included here; all art, sounds and music are read from the ROM you open, and it never leaves your browser.
 
@@ -25,6 +25,16 @@ Open one of these with **Open ROM…** and ROM Studio switches to that game (the
 | Contra | Contra (USA) | 131,088 | `F6035030` | Bill & Lance, weapons, enemies, bosses, all 8 levels' blocks, mechanics |
 | Castlevania | Castlevania (USA) (Rev 1) | 131,088 | `B668C7FC` | Simon, whip & subweapons, items, enemies, bosses, every stage's background, mechanics |
 | The Legend of Zelda | Legend of Zelda, The (USA) (Rev 1) | 131,088 | `EAF7ED72` | Link, enemies, bosses, items & NPCs, the overworld and every level's tiles, mechanics (incl. a starting kit) |
+
+**SNES** (the [SNES page](snes/)):
+
+| Game | ROM | Size | CRC32 | What you can edit |
+|---|---|---|---|---|
+| Super Mario World | Super Mario World (USA) | 524,288 | `B19ED489` | Mario & Luigi (every pose, all power-ups), Yoshi, items, enemies, platforms, each level tileset's screen and tiles, colours, mechanics |
+
+A copier header (512 extra bytes) is removed automatically. `ruby tools/snes_build.rb build config.json` rebuilds a SNES project zip byte for byte.
+
+Want to add a game (NES or SNES)? See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Another revision or region of the same game has its code in different places, so it won't open until it has its own profile (for example the first release of SMB2, Rev 0).
 
