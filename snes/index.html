@@ -23,11 +23,12 @@
       <button class="btn" id="btnProj" type="button">Open project…</button>
       <button class="btn" id="btnUndo" type="button" title="Undo (Ctrl+Z)" disabled>Undo</button>
       <button class="btn" id="btnRedo" type="button" title="Redo (Ctrl+Shift+Z)" disabled>Redo</button>
+      <button class="btn" id="btnStart" type="button" title="Clear every edit for this game (Undo brings it back)" disabled>Start over</button>
       <button class="btn primary" id="btnSave" type="button" disabled>Download</button>
       <a class="btn" href="../" title="The NES editor">NES games</a>
     </div>
-    <input type="file" id="fRom" accept=".sfc,.smc,.bin" hidden>
-    <input type="file" id="fProj" accept=".zip,.json" hidden>
+    <input type="file" id="fRom" hidden>
+    <input type="file" id="fProj" hidden>
   </header>
 
   <nav class="seg" id="tabs" aria-label="Views">
@@ -40,6 +41,7 @@
     <div class="empty">
       <p><strong>Open your SNES ROM to start.</strong> Nothing from the games is in ROM Studio, so you bring the ROM.</p>
       <p id="gamesList"></p>
+      <p id="romMsg" class="warnbox" hidden></p>
     </div>
   </section>
 

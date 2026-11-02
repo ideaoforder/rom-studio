@@ -90,7 +90,7 @@ function persist() {
 }
 const b64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
 const unb64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
-function updButtons() { $("#btnUndo").disabled = !S.undo.length; $("#btnRedo").disabled = !S.redo.length; $("#btnSave").disabled = !S.rom; }
+function updButtons() { $("#btnUndo").disabled = !S.undo.length; $("#btnRedo").disabled = !S.redo.length; $("#btnSave").disabled = !S.rom; $("#btnStart").disabled = !S.rom; }
 function changed() { persist(); updButtons(); render(); }
 let toastT;
 function toast(msg) { const t = $("#toast"); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => { t.hidden = true; }, 3200); }
@@ -106,11 +106,39 @@ function useRom(bytes, state) {
   $("#romChip").textContent = P.game + (header ? " (header removed)" : ""); $("#romChip").className = "chip ok";
   $("#welcome").hidden = true; persist(); updButtons(); render(); return true;
 }
-async function openRom(file) {
+// Opening is deliberately loud: on an iPad there's no console, so anything that goes wrong is said on the page.
+function romMsg(text) { const m = $("#romMsg"); m.textContent = text || ""; m.hidden = !text; if (text) { $("#welcome").hidden = false; m.scrollIntoView({ block: "nearest" }); } }
+async function romBytes(file) {
   const bytes = new Uint8Array(await file.arrayBuffer());
+  if (bytes[0] === 0x50 && bytes[1] === 0x4B) { // a .zip: use the ROM inside it
+    const z = await unzip(bytes.buffer), name = Object.keys(z).find(n => /\.(sfc|smc|swc|fig|bin)$/i.test(n)) || Object.keys(z).sort((a, b) => z[b].length - z[a].length)[0];
+    if (!name) throw new Error("That .zip is empty.");
+    if (z["config.json"]) return { project: true };
+    return { bytes: z[name], name };
+  }
+  return { bytes, name: file.name };
+}
+async function openRom(file) {
+  romMsg("");
+  let got;
+  try { got = await romBytes(file); } catch (e) { romMsg(`Couldn't read "${file.name}": ${e.message || e}`); return; }
+  if (got.project) return openProject(file);
+  const bytes = got.bytes, { rom, header } = SnesRom.normalize(bytes);
+  if (!window.SNES_PROFILES.some(p => SnesRom.matches(p, rom))) {
+    const want = window.SNES_PROFILES.map(p => `${p.game}: ${p.rom.size.toLocaleString()} bytes`).join("; ");
+    romMsg(`"${got.name}" isn't a ROM ROM Studio knows yet. It's ${bytes.length.toLocaleString()} bytes${header ? " (with a copier header)" : ""}, CRC32 ${crc32(rom).toString(16).toUpperCase().padStart(8, "0")}. Supported: ${want}, CRC32 B19ED489.`);
+    return;
+  }
   let keep = null;
   try { const saved = JSON.parse(localStorage.getItem(STORE) || "null"); const P = window.SNES_PROFILES.find(p => SnesRom.matches(p, SnesRom.normalize(bytes).rom)); if (saved && P && saved.game === P.id) keep = saved; } catch (e) { /* ignore */ }
-  if (useRom(bytes, keep) && keep && (Object.keys(keep.tiles || {}).length || Object.keys(keep.colors || {}).length)) toast("Picked up your saved edits for this game.");
+  try {
+    if (useRom(bytes, keep) && keep && (Object.keys(keep.tiles || {}).length || Object.keys(keep.colors || {}).length)) toast("Picked up your saved edits for this game.");
+  } catch (e) { console.error(e); romMsg(`Opened the ROM, but something broke while setting up: ${e.message || e}`); }
+}
+function startOver() {
+  if (!S.P) return;
+  checkpoint(); S.tiles = {}; S.colors = {}; S.mech = {}; S.name = ""; changed();
+  toast("Started over. Undo brings your work back.");
 }
 async function openProject(file) {
   const buf = await file.arrayBuffer();
@@ -310,9 +338,10 @@ function renderMech() {
 function init() {
   $("#gamesList").replaceChildren("Supported: ", ...window.SNES_PROFILES.flatMap((p, i) => [i ? ", " : "", el("strong", {}, p.game), ` (${p.rom.size.toLocaleString()} bytes, no header)`]));
   $("#btnRom").onclick = () => $("#fRom").click(); $("#btnProj").onclick = () => $("#fProj").click();
-  $("#fRom").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) openRom(f); };
-  $("#fProj").onchange = e => { const f = e.target.files[0]; e.target.value = ""; if (f) openProject(f); };
-  $("#btnUndo").onclick = undo; $("#btnRedo").onclick = redo; $("#btnSave").onclick = download;
+  // read the file before clearing the input (iOS can drop the File once the input is reset)
+  $("#fRom").onchange = async e => { const f = e.target.files[0]; if (f) await openRom(f); e.target.value = ""; };
+  $("#fProj").onchange = async e => { const f = e.target.files[0]; if (f) await openProject(f); e.target.value = ""; };
+  $("#btnUndo").onclick = undo; $("#btnRedo").onclick = redo; $("#btnSave").onclick = download; $("#btnStart").onclick = startOver;
   $("#dlDlg").addEventListener("close", () => { if ($("#dlDlg").returnValue === "ok") doDownload(); });
   document.querySelectorAll("#tabs button").forEach(b => { b.onclick = () => { S.tab = b.dataset.tab; S.obj = 0; S.frame = 0; S.zoom = 0; render(); }; });
   document.querySelectorAll("#toolSeg button").forEach(b => { b.onclick = () => { S.tool = b.dataset.tool; renderTools(); }; });
