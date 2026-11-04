@@ -18,7 +18,10 @@ What's known:
   - The camera is at `$00D8`/`$00DA`.
   - Mega Man's object is at `$0C00` (+5 X, +8 Y, +`$1A` Y speed, +`$2E` energy, mirrored at `$0BD1`).
   - Objects are 32-byte slots from `$0E00`, with +0 = 1 when live, +5/+8 the position, and +`$0A` the type. Type `$04` is Mega Man's shots.
-  - Lives are at `$0B81`. Weapon energy is at `$0B83 + 2·n` (bit 7 = owned), and the current weapon is at `$0B73`.
+  - Lives are at `$0B81`.
+  - Weapon energy is at `$0B83 + 2·n` (bit 7 = owned): 1 Freeze, 2 Thunder Bolt, 3 Junk Shield, 4 Scorch Wheel, 5 Slash Claw, 6 Noise Crush, 7 Danger Wrap, 8 Wild Coil, 10 Rush Search, 11 Rush Jet, 12 Rush Coil, 14 Super Adaptor. The current weapon is at `$0B73`.
+  - Tanks are at `$0BA0` (E), `$0BA1` (W) and `$0BA2` (S). Items are bits of `$0BA4`: R/U/S/H plates `$01`–`$08`, Exit `$20`, Beat `$40`, Energy Balancer `$80`. Bolts are a word at `$0BA6`.
+  - Mega Man's state is at `$0C02` (0 stand, 6 jump, 8 fall, 10 land) and his substate at `$0C03`. Buttons held are at `$0C41` and new presses at `$0C45`.
   - The password digits are at `$1DF2` (16 bytes).
   - In VRAM, sprite tiles start at `$C000` and the BG tilemaps are at `$A800` (front) and `$B800` (back).
 - **Reaching the stages:** `capture.stage_select()` boots through the title to the password screen, writes a published all-masters password straight into `$1DF2`, and confirms it. Stages are picked with the d-pad.
@@ -34,6 +37,6 @@ Not done yet:
 - **Bosses.** Rooms lock the camera, so flying right doesn't reach them. Revisited stages skip the boss intro too.
 - **Enemy names.** Enemies are labelled by stage and object type.
 - **Per-weapon colours for Mega Man.** The menu cursor isn't found yet.
-- **More mechanics.** The weapon-energy code and the jump speed haven't been found.
+- **Weapon energy.** The code that spends it hasn't been found yet.
 
 Checks: `dev/test_mm7.py` (codec parity, edits → download → Ruby parity → reopen, a forced repack, and booting both builds) and `dev/test_mm7_mech.py`.

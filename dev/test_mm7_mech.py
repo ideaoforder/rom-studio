@@ -31,7 +31,20 @@ def run(path, frames=300, weak=False):   # walk right through Freeze Man's stage
     for k in range(frames): s.run(4, "RIGHT", *(("B",) if k % 10 < 4 else ())); h.append(s.ram[0x0C2E])
     return lives0, [x for i, x in enumerate(h) if i == 0 or h[i - 1] != x], s.ram[0xB81]
 SEL = C.stage_select().save()
-V = {"normal": {}, "inv": {"invincible": True}, "lives": {"lives": True}, "start": {"startlives": 7}}
+def jump(path, presses):   # highest point over 2 s, holding B for each (start, end) frame range
+    s = SNES(path); s.load(SEL); C.enter(s, "Freeze Man"); s.run(30); y0 = s.ram[0xC08] | s.ram[0xC09] << 8; top = y0
+    for f in range(120):
+        s.run(1, *(("B",) if any(a <= f < b for a, b in presses) else ())); top = min(top, s.ram[0xC08] | s.ram[0xC09] << 8)
+    return y0 - top
+def new_game(path):       # title -> GAME START, a few seconds in
+    s = SNES(path)
+    for f in range(120):
+        s.run(30) if f % 2 else s.run(4, "START")
+        if C.title_menu(s.screen()): break
+    s.run(40); s.run(4, "START"); s.run(300); return s.ram
+V = {"normal": {}, "inv": {"invincible": True}, "lives": {"lives": True}, "start": {"startlives": 7}, "jump": {"jump": 150},
+     "double": {"airjump": 1}, "unlimited": {"airjump": 2},
+     "kit": {"kit_weapons": True, "kit_adaptor": True, "kit_rjet": True, "kit_balancer": True, "kit_beat": True, "kit_etanks": 4, "kit_bolts": 999}}
 with sync_playwright() as p:
     b = p.chromium.launch(); paths = {}
     for tag, st in V.items():
@@ -44,5 +57,17 @@ check("normal: dying costs a life", l1 < l0, (l0, l1))
 m0, _, m1 = run(paths["lives"], 400, True); check("infinite lives: it doesn't", m1 == m0, (m0, m1))
 s = C.stage_select(paths["start"]); C.enter(s, "Freeze Man"); s.run(20)   # boots the patched ROM through the password screen
 check("lives at the start: 7 after entering a password", s.ram[0xB81] == 7, s.ram[0xB81])
+ONE, TWO, THREE = [(0, 20)], [(0, 20), (26, 45)], [(0, 20), (26, 45), (50, 70)]
+j0, j1 = jump(paths["normal"], ONE), jump(paths["jump"], ONE); check("jump height 150%", 1.25 <= j1 / j0 <= 1.6, (j0, j1))
+n2, d1, d2, d3, u3 = jump(paths["normal"], TWO), jump(paths["double"], ONE), jump(paths["double"], TWO), jump(paths["double"], THREE), jump(paths["unlimited"], THREE)
+check("normal: pressing jump in the air does nothing", n2 == j0, (j0, n2))
+check("double jump: one more jump, not two", d1 == j0 and d2 > 1.6 * j0 and d3 == d2, (d1, d2, d3))
+check("unlimited air jumps: a third one too", u3 > d2 + 0.5 * j0, (d2, u3))
+k0, k1 = new_game(paths["normal"]), new_game(paths["kit"])
+w = lambda r, k: r[0xB83 + 2 * k]
+check("normal new game: only the buster and Rush Coil", all(not w(k0, k) & 0x80 for k in (1, 2, 3, 4, 11, 14)) and k0[0xBA0] == 0, k0[0xB83:0xBA8].hex())
+check("starting kit: weapons, Super Adaptor, Rush Jet, Energy Balancer, Beat, 4 E-tanks, 999 bolts",
+      all(w(k1, k) == 0x9C for k in (1, 2, 3, 4, 5, 6, 7, 8, 11, 14)) and k1[0xBA4] & 0xC0 == 0xC0 and k1[0xBA0] == 4 and k1[0xBA6] | k1[0xBA7] << 8 == 999, k1[0xB83:0xBA8].hex())
+p0 = C.stage_select(paths["kit"]).ram; check("a password game isn't touched by the kit", p0[0xBA0] == 1 and p0[0xBA6] | p0[0xBA7] << 8 == 640, p0[0xB9F:0xBA8].hex())
 print("errors:", errors or "none"); print(f"{sum(res)}/{len(res)} PASS")
 sys.exit(0 if all(res) and not errors else 1)

@@ -211,16 +211,12 @@ The SNES editor is its own page (`snes/`), so the NES page didn't change except 
   - Mega Man's tiles are uncompressed in bank `$19`: `raw` files, written in place.
 - **The page:** `rom.js` has per-file codecs (`lz2`/`lz1`/`clz`/`raw`) and HiROM. Raw files are skipped by repacking.
 - **Reaching content:** a published password, poked into `$1DF2`, gives the stage select with all 8 masters. Frames come from flying through each stage. Bosses aren't reached that way.
-- **Mechanics:**
-  - **Invincible:** `SBC #0` in the 4 damage sites.
-  - **Infinite lives:** `DEC $0B81` becomes `LDA`.
-  - **Lives at the start:** the 3 `LDA #2 / STA $0B81`.
-  - `test_mm7_mech.py` checks all three in play.
+- **Mechanics:** invincible, infinite lives, lives at the start, jump height, gravity, air jumps (double or unlimited, via hooks in the jump and fall states) and a new-game starting kit (weapons, Rush Jet/Search, Super Adaptor, Energy Balancer, Exit, Beat, tanks, bolts). `dev/gen_mm7/README.md` has the hook details, and `test_mm7_mech.py` checks each one in play (28 checks).
 - **Next:**
   - Bosses: the Wily 4 teleporters, or a checkpoint/room variable.
   - Enemy names.
   - Weapon colours: the menu cursor isn't `$30` or `$0BC7`.
-  - Weapon energy and jump speed.
+  - Weapon energy.
 
 ## ROM facts (SMB World, NROM)
 
