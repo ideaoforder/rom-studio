@@ -63,7 +63,7 @@
         <span class="hint" id="tileHint"></span>
       </div>
       <div class="well"><canvas id="painter" width="16" height="16"></canvas></div>
-      <p class="hint">Tiles are shared: painting a tile changes it everywhere the game uses it (other frames, other sprites, Luigi too).</p>
+      <p class="hint">Tiles are shared: painting a tile changes it everywhere the game uses it (other frames and other sprites).</p>
     </main>
     <aside class="panel" id="palPanel">
       <div class="ph"><h2>Colours</h2><span class="hint" id="palHint"></span></div>
@@ -101,11 +101,13 @@
 <script src="../lib/files.js"></script>
 <script src="../lib/mechanics.js"></script>
 <script src="lib/lz2.js"></script>
+<script src="lib/clz.js"></script>
 <script src="lib/tiles.js"></script>
 <script src="lib/color.js"></script>
 <script src="lib/rom.js"></script>
 <script>window.SNES_PROFILES = [];</script>
 <script src="profiles/smw.js"></script>
+<script src="profiles/mm7.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -119,6 +119,120 @@ module SnesStudio
     end
   end
 
+  # Capcom LZ (Mega Man 7, Rockman & Forte, Mega Man X2/X3): see snes/lib/clz.js
+  module CLZ
+    module_function
+
+    def decode(r, off, size)
+      out = []
+      i = off
+      ctl = r.getbyte(i)
+      i += 1
+      n = 8
+      while out.length < size
+        if ctl & 0x80 == 0
+          out << r.getbyte(i)
+          i += 1
+        else
+          b = r.getbyte(i)
+          d = ((b & 3) << 8) | r.getbyte(i + 1)
+          i += 2
+          (b >> 2).times { out << out[-d] if out.length < size }
+        end
+        break if out.length >= size
+
+        ctl = (ctl << 1) & 255
+        n -= 1
+        if n.zero?
+          ctl = r.getbyte(i)
+          i += 1
+          n = 8
+        end
+      end
+      [out.pack("C*"), i - off]
+    end
+
+    def matches(d)
+      n = d.length
+      len = Array.new(n, 0)
+      dist = Array.new(n, 0)
+      chains = {}
+      n.times do |i|
+        bl = 0
+        bd = 0
+        m = [63, n - i].min
+        if i + 2 < n
+          key = (d[i] << 16) | (d[i + 1] << 8) | d[i + 2]
+          c = (chains[key] ||= [])
+          j = c.length - 1
+          while j >= 0
+            s = c[j]
+            break if i - s > 1023
+
+            k = 0
+            k += 1 while k < m && d[s + k] == d[i + k]
+            if k > bl
+              bl = k
+              bd = i - s
+            end
+            break if k == m
+
+            j -= 1
+          end
+          c << i
+        end
+        len[i] = bl
+        dist[i] = bd
+      end
+      [len, dist]
+    end
+
+    def encode(str)
+      d = str.bytes
+      n = d.length
+      len, dist = matches(d)
+      cost = Array.new(n + 1, 0)
+      pick = Array.new(n, 0)
+      (n - 1).downto(0) do |i|
+        best = 9 + cost[i + 1]
+        choice = 0
+        l = len[i]
+        while l >= 3
+          c = 17 + cost[i + l]
+          if c < best
+            best = c
+            choice = l
+          end
+          l -= 1
+        end
+        cost[i] = best
+        pick[i] = choice
+      end
+      out = []
+      i = 0
+      ctl_at = -1
+      bits = 8
+      while i < n
+        if bits == 8
+          ctl_at = out.length
+          out << 0
+          bits = 0
+        end
+        l = pick[i]
+        if l.positive?
+          out[ctl_at] |= 0x80 >> bits
+          out.push((l << 2) | (dist[i] >> 8), dist[i] & 255)
+          i += l
+        else
+          out << d[i]
+          i += 1
+        end
+        bits += 1
+      end
+      out.pack("C*")
+    end
+  end
+
   module Tiles
     BYTES = { 2 => 16, 3 => 24, 4 => 32, 8 => 64 }.freeze
     module_function
@@ -224,14 +338,32 @@ module SnesStudio
   end
 
   class Build
-    MAPS = { "lorom" => ->(o) { ((o >> 15) << 16) | 0x8000 | (o & 0x7FFF) } }.freeze
+    MAPS = { "lorom" => ->(o) { ((o >> 15) << 16) | 0x8000 | (o & 0x7FFF) }, "hirom" => ->(o) { 0xC00000 | o } }.freeze
 
     def initialize(profile, rom)
       @p = profile
       @rom = rom.b
-      @little = profile.dig("gfx", "codec") == "lz1"
       @files = {}
-      profile["gfx"]["files"].each { |f| data, size = LZ2.decode(@rom, f["at"], @little); @files[f["id"]] = { data: data, size: size } }
+      profile["gfx"]["files"].each { |f| data, size = decode(f); @files[f["id"]] = { data: data, size: size } }
+    end
+
+    def codec(f) = f["codec"] || @p["gfx"]["codec"]
+
+    def decode(f)
+      case codec(f)
+      when "lz2", "lz1" then LZ2.decode(@rom, f["at"], codec(f) == "lz1")
+      when "clz" then CLZ.decode(@rom, f["at"], f["unpacked"])
+      when "raw" then [@rom[f["at"], f["len"]], f["len"]]
+      else raise "unknown codec #{codec(f)}"
+      end
+    end
+
+    def encode(f, data)
+      case codec(f)
+      when "lz2", "lz1" then LZ2.encode(data, codec(f) == "lz1")
+      when "clz" then CLZ.encode(data)
+      else raise "can't pack #{codec(f)}"
+      end
     end
 
     attr_reader :files
@@ -260,14 +392,19 @@ module SnesStudio
         edits.keys.map(&:to_i).sort.each { |t| Tiles.encode_tile(edits[t.to_s], data, t * n, f["bpp"]) }
         next if data == src
 
-        enc[f["id"]] = LZ2.encode(data, @little)
+        if codec(f) == "raw"
+          out[f["at"], data.bytesize] = data
+          next
+        end
+        enc[f["id"]] = encode(f, data)
       end
+      packed = @p["gfx"]["files"].reject { |f| codec(f) == "raw" }
       if enc.all? { |id, b| b.bytesize <= @files[id][:size] }
-        @p["gfx"]["files"].each { |f| out[f["at"], enc[f["id"]].bytesize] = enc[f["id"]] if enc[f["id"]] }
+        packed.each { |f| out[f["at"], enc[f["id"]].bytesize] = enc[f["id"]] if enc[f["id"]] }
       else
         at, stop = @p["gfx"]["region"]
-        @p["gfx"]["files"].each do |f|
-          b = enc[f["id"]] || LZ2.encode(@files[f["id"]][:data], @little)
+        packed.each do |f|
+          b = enc[f["id"]] || encode(f, @files[f["id"]][:data])
           if at + b.bytesize > stop || (f["max_end"] && at + b.bytesize > f["max_end"])
             raise "The edited graphics don't fit back in the ROM."
           end

@@ -14,14 +14,14 @@ ROM Studio supports a game through a **profile**: a JSON description of where th
 index.html              NES editor (one page; NES profiles are inline consts, written by dev/gen_<game>/build_profile.py)
 snes/index.html         SNES editor: markup
 snes/app.js             SNES editor: UI and state (tiles, colours, mechanics)
-snes/lib/*.js           SNES formats: lz2.js (Nintendo LZ2), tiles.js (planar 2/3/4/8 bpp), color.js (BGR555), rom.js (LoROM, build)
+snes/lib/*.js           SNES formats: lz2.js (Nintendo LZ2), clz.js (Capcom LZ), tiles.js (planar 2/3/4/8 bpp), color.js (BGR555), rom.js (LoROM/HiROM, build)
 snes/profiles/<game>.js one file per SNES game: window.SNES_PROFILES.push({...})
 lib/files.js            zip/unzip, IPS, CRC32, PNG (shared)
 lib/mechanics.js        mechanics knobs -> byte patches (shared)
 tools/smb_patcher.rb    NES command-line build (byte-identical to the NES page)
 tools/snes_build.rb     SNES command-line build (byte-identical to the SNES page)
 dev/gen_<game>/         a generator per game: reads your ROM (+ emulator captures), writes the profile
-dev/snes/               SNES dev helpers: emu.py (stable-retro), lz2.py, tiles.py, render.py
+dev/snes/               SNES dev helpers: emu.py (stable-retro), lz2.py, clz.py, tiles.py, render.py
 dev/test_<game>*.py     checks (dev/run_all.sh runs them for every ROM you've set)
 ```
 
@@ -51,7 +51,7 @@ window.SNES_PROFILES.push({
 - **Tiles are shared.** An edit is keyed by `(file, tile)`, so every frame and object that uses a tile changes with it.
 - **Colours are keyed by ROM offset.** An offset used by several palettes changes everywhere at once.
 - **Building.** Each edited file is re-encoded. If every edited file still fits in its old space, it's written in place. Otherwise every file in `gfx.files` is re-encoded, packed one after another in `region` (in list order), and its `ptrs` are rewritten. The encoder in `snes/lib/lz2.js` is greedy and deterministic, and `tools/snes_build.rb` and `dev/snes/lz2.py` mirror it exactly. On Super Mario World it beats Nintendo's packing by about 6.5 KB, which is the room edits have to grow into.
-- **Uncompressed graphics or HiROM** need a few lines in `snes/lib/rom.js` and `tools/snes_build.rb`: a codec of `"none"`, and another entry in `MAPS`. Keep the two in step and add a parity check.
+- **Codecs** (`codec` on the profile, or per file): `lz2`/`lz1` (Nintendo), `clz` (Capcom LZ; the file needs `unpacked`, its size) and `raw` (uncompressed art edited in place; the file needs `len`). Maps: `lorom` and `hirom`. A new codec goes in `snes/lib/`, `tools/snes_build.rb` and `dev/snes/` together, with a parity check like the one in `dev/test_mm7.py`.
 
 ### Finding the data: capture, then map back
 

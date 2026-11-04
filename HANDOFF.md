@@ -201,6 +201,27 @@ The SNES editor is its own page (`snes/`), so the NES page didn't change except 
   - To force a level, set `$0109` = translevel and game mode `$0B` from the map. Levels $101+ need the scratch ROM (`capture_levels.submap_rom`).
 - **Next:** bosses (Koopalings, Bowser, Reznor), Yoshi colours, the overworld, more mechanics (run speed, gravity, cape flight).
 
+## SNES: Mega Man 7 (USA)
+
+`snes/profiles/mm7.js`, built by `dev/gen_mm7/`; its README has the details. HiROM, 2 MB, with no public disassembly or RAM map, so the RAM, the sets table and the code patterns were found in the emulator.
+
+- **Graphics:**
+  - The 184 sets are Capcom LZ (`snes/lib/clz.js`, `CLZ` in Ruby, `dev/snes/clz.py`). A control byte gives 8 flags, high bit first. A 1 flag means 2 bytes `LLLLLLDD DDDDDDDD`: copy L from D back. The size comes from the table.
+  - Our encoder is an optimal parse: 12,740 bytes smaller than Capcom's over all sets, though 15 sets are individually larger. A repack walks the sets in ROM order and rewrites the 24-bit table entries. Ruby takes about 16 s for a full repack.
+  - Mega Man's tiles are uncompressed in bank `$19`: `raw` files, written in place.
+- **The page:** `rom.js` has per-file codecs (`lz2`/`lz1`/`clz`/`raw`) and HiROM. Raw files are skipped by repacking.
+- **Reaching content:** a published password, poked into `$1DF2`, gives the stage select with all 8 masters. Frames come from flying through each stage. Bosses aren't reached that way.
+- **Mechanics:**
+  - **Invincible:** `SBC #0` in the 4 damage sites.
+  - **Infinite lives:** `DEC $0B81` becomes `LDA`.
+  - **Lives at the start:** the 3 `LDA #2 / STA $0B81`.
+  - `test_mm7_mech.py` checks all three in play.
+- **Next:**
+  - Bosses: the Wily 4 teleporters, or a checkpoint/room variable.
+  - Enemy names.
+  - Weapon colours: the menu cursor isn't `$30` or `$0BC7`.
+  - Weapon energy and jump speed.
+
 ## ROM facts (SMB World, NROM)
 
 16-byte header, PRG at 0x10, CHR at 0x8010 (sprites) / 0x9010 (BG). File offset = addr − 0x8000 + 0x10. Labels from the Xkeeper0 smb1 disassembly. Key ones: `Palette0_MTiles` $8B10, `Palette3Data` $89D1, `ColorRotatePalette` $89C3, `BackgroundColors` $85CF, `PowerUpGfxTable` $E6BE, SoundEngine $F2D0.

@@ -1,10 +1,20 @@
 // SNES ROM model for a profile ("snes-profile/1"): addressing, compressed graphics files, palettes, building.
 // No DOM. tools/snes_build.rb mirrors build() byte for byte (checked by dev/test_smw.py).
 (function (root) {
-  const { LZ2, Tiles, SnesColor, Mechanics } = root;
-  // LoROM: 32 KB banks at $8000-$FFFF. (HiROM profiles would add their own pair here.)
+  const { LZ2, CLZ, Tiles, SnesColor, Mechanics } = root;
+  // LoROM: 32 KB banks at $8000-$FFFF. HiROM: 64 KB banks, the ROM seen whole at $C0:0000.
   const MAPS = {
     lorom: { toFile: a => ((a >> 16) & 0x7F) * 0x8000 + (a & 0x7FFF), toSnes: o => ((o >> 15) << 16) | 0x8000 | (o & 0x7FFF) },
+    hirom: { toFile: a => a & 0x3FFFFF, toSnes: o => 0xC00000 | o },
+  };
+  // Graphics codecs. A file's `codec` overrides the profile's gfx.codec.
+  //   lz2 / lz1: Nintendo LZ (end marker)   clz: Capcom LZ (needs `unpacked`, the size)   raw: uncompressed (`len` bytes)
+  const codecOf = (P, f) => f.codec || P.gfx.codec;
+  const CODECS = {
+    lz2: { decode: (r, f) => LZ2.decode(r, f.at, false), encode: d => LZ2.encode(d, false) },
+    lz1: { decode: (r, f) => LZ2.decode(r, f.at, true), encode: d => LZ2.encode(d, true) },
+    clz: { decode: (r, f) => CLZ.decode(r, f.at, f.unpacked), encode: d => CLZ.encode(d) },
+    raw: { decode: (r, f) => ({ data: r.slice(f.at, f.at + f.len), size: f.len }), encode: d => d },
   };
   // Strip a 512-byte copier header if there is one.
   function normalize(bytes) { return bytes.length % 1024 === 512 ? { rom: bytes.slice(512), header: true } : { rom: bytes, header: false }; }
@@ -16,7 +26,7 @@
   function decodeFiles(P, rom) {
     const out = {};
     for (const f of P.gfx.files) {
-      const { data, size } = LZ2.decode(rom, f.at, P.gfx.codec === "lz1");
+      const { data, size } = CODECS[codecOf(P, f)].decode(rom, f);
       out[f.id] = { data, size, bpp: f.bpp, tiles: Math.floor(data.length / Tiles.BYTES[f.bpp]) };
     }
     return out;
@@ -46,16 +56,17 @@
       const src = files[f.id], data = src.data.slice(), n = Tiles.BYTES[f.bpp];
       for (const t of Object.keys(edits).map(Number).sort((a, b) => a - b)) Tiles.encodeTile(Tiles.fromHex(edits[t]), data, t * n, f.bpp);
       if (data.every((v, i) => v === src.data[i])) continue;
-      enc[f.id] = LZ2.encode(data, P.gfx.codec === "lz1");
+      if (codecOf(P, f) === "raw") { out.set(data, f.at); continue; }   // uncompressed art: written straight back
+      enc[f.id] = CODECS[codecOf(P, f)].encode(data);
     }
-    const ids = Object.keys(enc);
+    const ids = Object.keys(enc), packed = P.gfx.files.filter(f => codecOf(P, f) !== "raw");
     if (ids.every(id => enc[id].length <= files[id].size)) {
-      for (const f of P.gfx.files) if (enc[f.id]) out.set(enc[f.id], f.at);   // everything fits where it was
+      for (const f of packed) if (enc[f.id]) out.set(enc[f.id], f.at);   // everything fits where it was
     } else {
-      // repack every file (re-encoding the untouched ones too, which frees space) one after another in the region
+      // repack every compressed file (re-encoding the untouched ones too, which frees space) one after another in the region
       let at = P.gfx.region[0];
-      for (const f of P.gfx.files) {
-        const b = enc[f.id] || LZ2.encode(files[f.id].data, P.gfx.codec === "lz1");
+      for (const f of packed) {
+        const b = enc[f.id] || CODECS[codecOf(P, f)].encode(files[f.id].data);
         if (at + b.length > P.gfx.region[1] || (f.max_end != null && at + b.length > f.max_end))
           throw new Error("The edited graphics don't fit back in the ROM. Try simpler art (fewer colours and patterns) in the newest edits.");
         out.set(b, at); for (const [off, kind] of f.ptrs || []) writePtr(out, off, kind, map.toSnes(at));
