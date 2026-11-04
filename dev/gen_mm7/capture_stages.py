@@ -7,7 +7,7 @@ BG1_MAP, BG2_MAP = 0xA800, 0xB800       # 32x32 tilemaps in VRAM (found by rende
 def bg_tile(prov, v, t):
     b = v[32 * t:32 * t + 32]
     if not any(b): return ("blank",)
-    return prov.idx.get(b) or prov.raw.setdefault(b, C.raw_lookup(b))
+    return prov.idx.get(b)   # sets only: background art isn't streamed from the uncompressed banks
 def tilemap(prov, v, base):
     parts, miss = [], 0
     for ty in range(32):

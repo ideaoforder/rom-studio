@@ -49,7 +49,7 @@ with sync_playwright() as p:
       const touch = (p, f) => { const px = tileAt(p[0], p[1]).map((r, y) => r.map((v, x) => f(v, x, y))); (S.tiles[fileOf(p[0]).id] ||= {})[p[1]] = Tiles.toHex(px); return [fileOf(p[0]).id, p[1]]; };
       const out = { mega: O('Mega Man').frames[1].parts.slice(0, 4).map(p => touch(p, (v, x, y) => v ? (y % 2 ? 1 : v) : 0)) };
       const en = S.P.objects.find(o => o.group === 'Freeze Man' && o.type !== '04'); out.enemy = [touch(en.frames[0].parts.find(p => tileAt(p[0], p[1]).some(r => r.some(v => v))), v => v ? 2 : 0)];
-      const blk = S.P.objects.find(o => o.name.startsWith('Freeze Man')); const bp = blk.frames[0].parts.find(p => tileAt(p[0], p[1]).some(r => r.some(v => v)));
+      const blk = S.P.objects.find(o => o.category === 'blocks' && o.name.startsWith('Freeze Man')); const bp = blk.frames[0].parts.find(p => tileAt(p[0], p[1]).some(r => r.some(v => v)));
       out.block = [touch(bp, (v, x, y) => y < 2 ? 1 : v)];
       const off = S.P.palettes[bp[4]].colors[1]; S.colors[off] = '03E0'; out.color = off;
       changed(); return out; })()""")
@@ -92,7 +92,9 @@ if C:
     st = C.stage_select().save()
     for tag, path in [("edited", f"{x1}/{cfg['output']}"), ("repacked", f"{x3}/{cfg3['output']}")]:
         s = SNES(path); s.load(st); C.enter(s, "Freeze Man"); s.run(20); v = s.vram; cg = s.cgram
-        fid, t = edits["block"][0]; d = bytearray(dec[fid]); tiles.encode_tile(json.load(open(f"{x1}/config.json"))["state"]["tiles"][fid][str(t)], d, 32 * t, 4)
+        fid, t = edits["block"][0]; f = m[fid]
+        d = bytearray(dec[fid] if f["codec"] == "clz" else rom[f["at"]:f["at"] + f["len"]])   # (Freeze Man's backgrounds are uncompressed)
+        tiles.encode_tile(json.load(open(f"{x1}/config.json"))["state"]["tiles"][fid][str(t)], d, 32 * t, 4)
         if tag == "edited":
             check("edited ROM: the painted background tile is in VRAM", bytes(d[32 * t:32 * t + 32]) in v)
             check("edited ROM: the new colour is in CGRAM", any(cg[2 * i:2 * i + 2] == bytes([0xE0, 0x03]) for i in range(128)))

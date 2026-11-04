@@ -105,7 +105,9 @@ def blocks():
     out = []
     for name, st in STAGES["stages"].items():
         cg = st["cgram"]
-        front = [part(p, cg, False) for p in st["bg1"]]; back = [part(p, cg, False) for p in st["bg2"]]
+        # background tiles only come from the compressed sets: a match in uncompressed data is a coincidence here
+        # (bank $19 is Mega Man's), and painting it wouldn't reach the screen
+        front = [part(p, cg, False) for p in st["bg1"] if p[0].startswith("set:")]; back = [part(p, cg, False) for p in st["bg2"] if p[0].startswith("set:")]
         frames = [{"name": "room", "parts": front + back, "w": 256, "h": 256}]
         use = {}
         for p in front + back: use.setdefault((p[0], p[1]), (p[4], p[5] & 0))
