@@ -34,7 +34,7 @@ What's known:
 
 Not done yet:
 
-- **Bosses.** Rooms lock the camera, so flying right doesn't reach them. Revisited stages skip the boss intro too.
+- **Boss fights.** The robot masters come from their stage-intro poses (`capture_bosses.py`). A stage counts as beaten when its weapon is owned *and* `$0B7C` is set, so clearing both while a published password loads replays the intro. The fights themselves aren't captured, because rooms lock the camera and flying right doesn't reach them. Bass, Wily and the fortress bosses aren't captured either.
 - **Enemy names.** Enemies are labelled by stage and object type.
 - **Per-weapon colours for Mega Man.** The menu cursor isn't found yet.
 - **Weapon energy.** The code that spends it hasn't been found yet.

@@ -10,15 +10,20 @@ STAGES = {"Spring Man": ["UP", "LEFT"], "Freeze Man": ["UP"], "Slash Man": ["UP"
           "Junk Man": ["RIGHT"], "Turbo Man": ["DOWN", "LEFT"], "Burst Man": ["DOWN"], "Shade Man": ["DOWN", "RIGHT"]}
 w = lambda r, a: r[a] | r[a + 1] << 8
 def title_menu(sc): return sc[130:145, 90:190].mean() > 15 and sc[10:100, 40:220].mean() > 40
-def stage_select(path=ROM_PATH, password=ALL_BEATEN):
+def stage_select(path=ROM_PATH, password=ALL_BEATEN, unbeat=()):
+    """`unbeat`: weapon numbers to take away while the password loads, so those stages count as not beaten and play
+    their boss intro (that also needs $0B7C, a fortress-progress flag, kept at 0)"""
     s = SNES(path)
-    if path == ROM_PATH and password == ALL_BEATEN and os.path.exists(SEL_CACHE): s.load(open(SEL_CACHE, "rb").read()); return s
+    if path == ROM_PATH and password == ALL_BEATEN and not unbeat and os.path.exists(SEL_CACHE): s.load(open(SEL_CACHE, "rb").read()); return s
     for f in range(120):
         s.run(30) if f % 2 else s.run(4, "START")
         if title_menu(s.screen()): break
     s.run(40); s.run(4, "DOWN"); s.run(30); s.run(4, "START"); s.run(120)      # PASS WORD
-    s.poke(PASSWORD, *[int(c) for c in password]); s.run(10); s.run(4, "START"); s.run(150)
-    if path == ROM_PATH and password == ALL_BEATEN: open(SEL_CACHE, "wb").write(s.save())
+    s.poke(PASSWORD, *[int(c) for c in password]); s.run(10); s.run(4, "START")
+    for _ in range(150):
+        s.run(1)
+        for k in unbeat: s.poke(0x0B83 + 2 * k, 0); s.poke(0x0B7C, 0)
+    if path == ROM_PATH and password == ALL_BEATEN and not unbeat: open(SEL_CACHE, "wb").write(s.save())
     return s
 def enter(s, stage):
     for m in STAGES[stage]: s.run(4, m); s.run(12)

@@ -31,7 +31,7 @@ Open one of these with **Open ROM…** and ROM Studio switches to that game (the
 | Game | ROM | Size | CRC32 | What you can edit |
 |---|---|---|---|---|
 | Super Mario World | Super Mario World (USA) | 524,288 | `B19ED489` | Mario & Luigi (every pose, all power-ups), Yoshi, items, enemies, platforms, each level tileset's screen and tiles, colours, mechanics |
-| Mega Man 7 | Mega Man 7 (USA) | 2,097,152 | `2D947536` | Mega Man (36 poses), the 8 stages' enemies and objects, each stage's room and tiles, colours, mechanics (no bosses yet) |
+| Mega Man 7 | Mega Man 7 (USA) | 2,097,152 | `2D947536` | Mega Man (36 poses), the 8 robot masters, each stage's enemies and objects, each stage's room and tiles, colours, mechanics (incl. double jump and a starting kit) |
 
 A copier header (512 extra bytes) is removed automatically. `ruby tools/snes_build.rb build config.json` rebuilds a SNES project zip byte for byte.
 

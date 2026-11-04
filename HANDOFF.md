@@ -210,10 +210,10 @@ The SNES editor is its own page (`snes/`), so the NES page didn't change except 
   - Our encoder is an optimal parse: 12,740 bytes smaller than Capcom's over all sets, though 15 sets are individually larger. A repack walks the sets in ROM order and rewrites the 24-bit table entries. Ruby takes about 16 s for a full repack.
   - Mega Man's tiles are uncompressed in bank `$19`: `raw` files, written in place.
 - **The page:** `rom.js` has per-file codecs (`lz2`/`lz1`/`clz`/`raw`) and HiROM. Raw files are skipped by repacking.
-- **Reaching content:** a published password, poked into `$1DF2`, gives the stage select with all 8 masters. Frames come from flying through each stage. Bosses aren't reached that way.
+- **Reaching content:** a published password, poked into `$1DF2`, gives the stage select with all 8 masters. Frames come from flying through each stage. The robot masters come from their intro poses: clear the weapon bit and `$0B7C` while the password loads, and the intro plays again.
 - **Mechanics:** invincible, infinite lives, lives at the start, jump height, gravity, air jumps (double or unlimited, via hooks in the jump and fall states) and a new-game starting kit (weapons, Rush Jet/Search, Super Adaptor, Energy Balancer, Exit, Beat, tanks, bolts). `dev/gen_mm7/README.md` has the hook details, and `test_mm7_mech.py` checks each one in play (28 checks).
 - **Next:**
-  - Bosses: the Wily 4 teleporters, or a checkpoint/room variable.
+  - Boss fights, Bass, and Wily's machines: the Wily 4 teleporters, or a checkpoint/room variable.
   - Enemy names.
   - Weapon colours: the menu cursor isn't `$30` or `$0BC7`.
   - Weapon energy.

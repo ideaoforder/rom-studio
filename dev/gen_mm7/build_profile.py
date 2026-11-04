@@ -2,7 +2,8 @@
 
     export MM7_ROM=/path/to/Mega Man 7 (USA).sfc
     python3 capture_player.py /tmp/mm7_player.json   # Mega Man's poses
-    python3 capture_stages.py /tmp/mm7_stages.json   # the 8 stages: objects, backgrounds, colours, weapon colours
+    python3 capture_stages.py /tmp/mm7_stages.json   # the 8 stages: objects, backgrounds, colours
+    python3 capture_bosses.py /tmp/mm7_bosses.json   # the 8 robot masters' intro poses
     python3 build_profile.py                         # -> ../../snes/profiles/mm7.js
 """
 import json, os
@@ -10,6 +11,7 @@ from mm7 import ROM, SETS, SETS_TABLE
 HERE = os.path.dirname(os.path.abspath(__file__)); REPO = os.path.join(HERE, "..", "..")
 PLAYER = json.load(open(os.environ.get("MM7_PLAYER", "/tmp/mm7_player.json")))
 STAGES = json.load(open(os.environ.get("MM7_STAGES", "/tmp/mm7_stages.json")))
+BOSSES = json.load(open(os.environ.get("MM7_BOSSES", "/tmp/mm7_bosses.json")))
 
 # ---------------------------------------------------------------- graphics files: every compressed set, plus raw banks in use
 def used_raw():
@@ -18,6 +20,8 @@ def used_raw():
         for p in parts:
             if p[0].startswith("raw:"): banks.add(int(p[0][4:], 16))
     for v in PLAYER.values(): scan(v)
+    for b in BOSSES.values():
+        for parts in b["frames"]: scan(parts)
     for st in STAGES["stages"].values():
         scan(st["bg1"]); scan(st["bg2"])
         for fr in st["objects"].values():
@@ -73,6 +77,19 @@ def megaman():
     frames = [{"name": f"pose {i + 1}", "parts": [part(p, cg, label="Mega Man") for p in ps]} for i, ps in enumerate(pick_frames(poses, cap=48))]
     return [{"name": "Mega Man", "group": "Mega Man", "frames": frames}]
 
+def bosses():
+    """each robot master's intro poses; the name lettering (a font set every intro shares) is left out"""
+    from collections import Counter
+    common = Counter(src for b in BOSSES.values() for src in {p[0] for parts in b["frames"] for p in parts})
+    font = {src for src, n in common.items() if n >= 6}
+    out = []
+    for name, b in BOSSES.items():
+        if not b["cgram"]: continue
+        frames = [[p for p in parts if p[0] not in font] for parts in b["frames"]]
+        full = max(len(f) for f in frames); frames = [f for f in frames if len(f) >= 0.8 * full]
+        fr = [{"name": f"pose {i + 1}", "parts": [part(p, b["cgram"], label=name) for p in ps]} for i, ps in enumerate(pick_frames(frames, cap=8))]
+        out.append({"name": name, "group": "Robot masters", "frames": fr, "note": "the poses from the stage intro"})
+    return out
 def stage_objects():
     out = []
     for name, st in STAGES["stages"].items():
@@ -101,7 +118,7 @@ def blocks():
     return out
 def build():
     from mech import mechanics, presets
-    objects = megaman() + stage_objects() + blocks()
+    objects = megaman() + bosses() + stage_objects() + blocks()
     return {"format": "snes-profile/1", "id": "mm7", "game": "Mega Man 7 (USA)",
             "rom": {"size": len(ROM), "map": "hirom", "checksum": 0xFFDC,
                     "check": [[0xFFC0, ROM[0xFFC0:0xFFD5].hex().upper()], [0xFFD9, ROM[0xFFD9:0xFFDB].hex().upper()],
