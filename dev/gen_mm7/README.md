@@ -19,8 +19,8 @@ What's known:
   - Mega Man's object is at `$0C00` (+5 X, +8 Y, +`$1A` Y speed, +`$2E` energy, mirrored at `$0BD1`).
   - Objects are 32-byte slots from `$0E00`, with +0 = 1 when live, +5/+8 the position, and +`$0A` the type. Type `$04` is Mega Man's shots.
   - Lives are at `$0B81`.
-  - Weapon energy is at `$0B83 + 2·n` (bit 7 = owned): 1 Freeze, 2 Thunder Bolt, 3 Junk Shield, 4 Scorch Wheel, 5 Slash Claw, 6 Noise Crush, 7 Danger Wrap, 8 Wild Coil, 10 Rush Search, 11 Rush Jet, 12 Rush Coil, 14 Super Adaptor. The current weapon is at `$0B73`.
-  - Tanks are at `$0BA0` (E), `$0BA1` (W) and `$0BA2` (S). Items are bits of `$0BA4`: R/U/S/H plates `$01`–`$08`, Exit `$20`, Beat `$40`, Energy Balancer `$80`. Bolts are a word at `$0BA6`.
+  - Weapon energy is at `$0B83 + 2·n` (bit 7 = owned): 1 Freeze, 2 Thunder Bolt, 3 Junk Shield, 4 Scorch Wheel, 5 Slash Claw, 6 Noise Crush, 7 Danger Wrap, 8 Wild Coil, 9 Proto Shield, 10 Rush Search, 11 Rush Jet, 12 Rush Coil, 13 Beat (an unfinished weapon, see TCRF), 14 Super Adaptor. The current weapon is at `$0B73`.
+  - Tanks are at `$0BA0` (E), `$0BA1` (W) and `$0BA2` (S). Beat is `$0BA3`: bit 7 = freed, low bits = whistles (4 at most; the shop's `CMP #$04` at file `0x18D9A0`). Items are bits of `$0BA4`: R/U/S/H plates `$01`–`$08`, Exit `$20`, Hyper Rocket Buster (the menu's PU) `$40`, Energy Balancer `$80`. The shop's buy routines are a pointer table at file `0x18D915`. `$0BA5` is the beaten-masters bitmask. Bolts are a word at `$0BA6`.
   - Mega Man's state is at `$0C02` (0 stand, 6 jump, 8 fall, 10 land) and his substate at `$0C03`. Buttons held are at `$0C41` and new presses at `$0C45`.
   - The password digits are at `$1DF2` (16 bytes).
   - In VRAM, sprite tiles start at `$C000` and the BG tilemaps are at `$A800` (front) and `$B800` (back).

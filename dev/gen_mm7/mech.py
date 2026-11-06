@@ -65,10 +65,11 @@ def kit():
     def bit(key, addr): own.setdefault(key, []).append(len(b"".join(lines)) + 4); lines.append(bytes([0xAD, addr & 255, addr >> 8, 0x09, 0, 0x8D, addr & 255, addr >> 8]))
     put("rcoil", 0x0B9B, 0x80)
     for k in range(1, 9): put("weapons", 0x0B83 + 2 * k, 0)
-    put("rsearch", 0x0B97, 0); put("rjet", 0x0B99, 0); put("adaptor", 0x0B9F, 0)
+    put("rsearch", 0x0B97, 0); put("rjet", 0x0B99, 0); put("adaptor", 0x0B9F, 0); put("pshield", 0x0B95, 0)
     put("etanks", 0x0BA0, 0); put("wtanks", 0x0BA1, 0); put("stank", 0x0BA2, 0)
+    put("beat", 0x0BA3, 0)                    # Beat: bit 7 = freed from his cage, low bits = whistles (4 at most)
     put("bolts", 0x0BA6, 0); put("bolts", 0x0BA7, 0)
-    for key in ("balancer", "exit", "beat"): bit(key, 0x0BA4)
+    for key in ("balancer", "exit", "hyper"): bit(key, 0x0BA4)
     code = b"".join(lines) + b"\x6B"
     off = {k: [KIT_AT + o for o in v] for k, v in own.items()}
     install = [{"offset": site, "hex": "22%02X%02X%02XEAEA" % (a & 255, (a >> 8) & 255, a >> 16)}, {"offset": KIT_AT, "hex": code.hex().upper()}]
@@ -104,7 +105,11 @@ def mechanics():
       toggle("kit_rsearch", "Rush Search", "Rush digs up items." + new, K["rsearch"], 0x9C),
       toggle("kit_balancer", "Energy Balancer", "Weapon energy you pick up fills the emptiest weapon." + new, K["balancer"], 0x80),
       toggle("kit_exit", "Exit", "Leave a stage you've already beaten from the menu." + new, K["exit"], 0x20),
-      toggle("kit_beat", "Beat", "The bird who rescues Mega Man from pits." + new, K["beat"], 0x40),
+      toggle("kit_pshield", "Proto Shield", "Proto Man's shield, picked like a weapon: Mega Man holds it up to block shots." + new, K["pshield"], 0x9C),
+      toggle("kit_hyper", "Hyper Rocket Buster", "The PU item: the Super Adaptor's rocket fist flies farther and homes in a little." + new, K["hyper"], 0x40),
+      {"id": "kit_beat", "label": "Beat whistles", "kind": "number", "section": "Start a new game with", "offset": K["beat"][0], "bias": 0x80,
+       "default": 0, "min": 0, "max": 4, "install": kit_install,
+       "help": "Beat is freed, and each whistle calls him once to catch Mega Man over a pit (4 is the most)." + new},
       count("kit_etanks", "Energy tanks", "Refill Mega Man's energy from the menu (4 is the most)." + new, K["etanks"], 4),
       count("kit_wtanks", "Weapon tanks", "Refill a weapon from the menu (4 is the most)." + new, K["wtanks"], 4),
       count("kit_stank", "Super tank", "Refills everything (1 is the most)." + new, K["stank"], 1),
@@ -123,6 +128,6 @@ def mechanics():
     return [k for k in knobs if not k["id"].startswith("kit_")] + [k for k in knobs if k["id"].startswith("kit_")]
 def presets():
     kit = {"kit_weapons": True, "kit_adaptor": True, "kit_rjet": True, "kit_rsearch": True, "kit_balancer": True, "kit_exit": True,
-           "kit_beat": True, "kit_etanks": 4, "kit_wtanks": 4, "kit_stank": 1, "kit_bolts": 999}
+           "kit_beat": 4, "kit_pshield": True, "kit_hyper": True, "kit_etanks": 4, "kit_wtanks": 4, "kit_stank": 1, "kit_bolts": 999}
     return {"Normal": {}, "Easy": {"startlives": 9, "kit_etanks": 4, "kit_balancer": True}, "Ready to go": kit,
             "Super Mega Man": {**kit, "invincible": True, "lives": True, "startlives": 9, "airjump": 1, "jump": 125}}
