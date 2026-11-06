@@ -112,6 +112,35 @@ def mm3_aim(path):  # first Mega Buster (or Shadow Blade) shot's movement over 3
             if sl and nes[0x300 + sl] & 0x80: tr.append((nes[0x380 + sl] * 256 + nes[0x360 + sl], nes[0x3E0 + sl] * 240 + nes[0x3C0 + sl]))
         out[lab] = (tr[3][0] - tr[0][0], tr[3][1] - tr[0][1], len(tr)) if len(tr) > 3 else None
     return out
+def mm3_enemy(path):  # boot, walk to the first enemy (slot 30) and give it 8 health
+    nes = mm3_boot(path)
+    for t in range(58): nes.controller = R | A; nes.step(1)
+    nes[0x4FE] = (nes[0x4FE] & 0xE0) | 8; px = nes[0x380] * 256 + nes[0x360] + 70
+    return nes, [px & 255, px >> 8, nes[0x3C0] - 8, 0]  # pinned 70 px ahead so it can't touch Mega Man
+def mm3_hits(path, slot=None, shots=16):  # health left after `shots` buster hits (each shot is moved onto the enemy)
+    nes, pos = mm3_enemy(path)
+    for k in range(shots):
+        nes.controller = B; nes.step(1); sh = None
+        for f in range(30):
+            for a, v in zip((0x360, 0x380, 0x3C0, 0x3E0), pos): nes[a + 30] = v
+            if sh is None: sh = next((q for q in ((slot,) if slot else (5, 4, 3, 2, 1)) if nes[0x300 + q] & 0x80 and nes[0x320 + q] == 1), None)
+            if sh and nes[0x300 + sh] & 0x80:
+                for a in (0x360, 0x380, 0x3C0, 0x3E0): nes[a + sh] = nes[a + 30]
+            nes.controller = 0; nes.step(1)
+    return nes[0x4FE] & 0x1F if nes[0x31E] & 0x80 else 0
+def mm3_dust(path):  # slide every 40 frames with the enemy parked on the slide dust (slot 4): health left
+    nes, pos = mm3_enemy(path)
+    for t in range(400):
+        if nes[0x304] & 0x80 and nes[0x324] == 0: pos = [nes[0x364], nes[0x384], nes[0x3C4], nes[0x3E4]]
+        for a, v in zip((0x360, 0x380, 0x3C0, 0x3E0), pos): nes[a + 30] = v
+        nes.controller = (D | A) if t % 40 < 3 else 0; nes.step(1)
+    return nes[0x4FE] & 0x1F
+def mm3_held(path):  # hold B for 4 s: shots fired, most on screen
+    nes = mm3_boot(path); fired = most = 0; prev = set()
+    for t in range(240):
+        nes.controller = B; nes.step(1); alive = {s for s in (1, 2, 3, 4, 5) if nes[0x300 + s] & 0x80 and nes[0x320 + s] == 1}
+        fired += len(alive - prev); prev = alive; most = max(most, len(alive))
+    return fired, most
 with sync_playwright() as p:
     pw = p.chromium.launch()
     smb = {}
@@ -135,6 +164,10 @@ with sync_playwright() as p:
             path, parity, same = build(pw, MM3, st, tag); mm[tag] = mm3_measure(path); mm[tag]["ruby"] = parity; mm[tag]["roundtrip"] = same
         for tag, st in [("mm3_aim", {"aim": True}), ("mm3_aim_fast", {"aim": True, "shotspeed": 150})]:
             path, parity, same = build(pw, MM3, st, tag); mm[tag] = {"aim": mm3_aim(path), "ruby": parity, "roundtrip": same}
+        for tag, st in [("mm3_bass", {"rapid": 1, "rapidrate": 4, "w0.shots": 5, "w0.str": 1}), ("mm3_quarter", {"w0.str": 2})]:
+            path, parity, same = build(pw, MM3, st, tag); mm[tag] = {"held": mm3_held(path), "hp_after_16": mm3_hits(path), "ruby": parity, "roundtrip": same}
+        mm["mm3_bass"].update(slot5_hp=mm3_hits(f"{T}/mm3_bass.nes", 5, 4), dust_hp=mm3_dust(f"{T}/mm3_bass.nes"))
+        mm["mm3_base"].update(held=mm3_held(f"{T}/mm3_base.nes"), hp_after_16=mm3_hits(f"{T}/mm3_base.nes"), dust_hp=mm3_dust(f"{T}/mm3_base.nes"))
         mm["mm3_base"]["aim"] = mm3_aim(f"{T}/mm3_base.nes")
         for k, v in mm.items(): print(k, v)
         b = mm["mm3_base"]; rom = open(f"{T}/mm3_ammo.nes", "rb").read(); orig = open(MM3, "rb").read(); wr = open(f"{T}/mm3_weap.nes", "rb").read()
@@ -166,6 +199,9 @@ with sync_playwright() as p:
                            and (lambda a: a["none"][:2] == (12, 0) and a["up"][:2] == (0, -12) and a["up+right"][:2] == (12, -12) and a["down"][:2] == (0, 12) and a["down+left"][:2] == (-12, 12)
                                 and a["blade up"] == b["aim"]["blade up"] and a["blade"] == b["aim"]["blade"])(mm["mm3_aim"]["aim"])
                            and mm["mm3_aim_fast"]["aim"]["up+right"][:2] == (18, -18),
+                       "MM3 Bass buster: held B auto-fires 5 at a time (normal: 1 shot per press, 3 max)": b["held"] == (1, 1) and mm["mm3_bass"]["held"][0] >= 30 and mm["mm3_bass"]["held"][1] == 5,
+                       "MM3 strength: 16 buster shots kill an 8-health enemy at full, leave 2-4 at half, 4-6 at quarter": b["hp_after_16"] == 0 and 2 <= mm["mm3_bass"]["hp_after_16"] <= 4 and 4 <= mm["mm3_quarter"]["hp_after_16"] <= 6,
+                       "MM3 shots in slot 5 hit; slide dust in slot 4 doesn't": mm["mm3_bass"]["slot5_hp"] < 8 and mm["mm3_bass"]["dust_hp"] == 8 == b["dust_hp"],
                        "MM3 Ruby parity + round trip": all(v["ruby"] and v["roundtrip"] for v in mm.values())})
     pw.close()
 for k, v in checks.items(): print(("PASS " if v else "FAIL ") + k)
