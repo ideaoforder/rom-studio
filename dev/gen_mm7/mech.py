@@ -80,6 +80,8 @@ def mechanics():
     hits = [i + 3 for i in at("AD 2E 0C 38 ED 00 00 10 02 A9 00 8D 2E 0C", n=3)]   # three more: SBC $0000 (shots, hazards)
     lives_dec = at("AD 81 0B F0 04 CE 81 0B") + 5                       # LDA lives / BEQ / DEC lives
     lives0 = [i + 1 for i in at("A9 02 8D 81 0B", n=3)]                   # LDA #2 / STA lives: new game, continue, password
+    spend = at("C2 20 B9 82 0B 29 FF 7F 38 FD 72 A0") + 9          # weapon energy is a word at $0B82+2n: ... SBC cost,X
+    rush = [at(h) + 8 for h in ("C2 20 AD 96 0B E9 FF 00 8D 96 0B", "C2 20 AD 9A 0B E9 FF 01 8D 9A 0B")] + [at("09 00 80 8D 98 0B C9 00 80") + 3]
     jump = at("A9 40 85 1C C2 20 A9 F4 05 85 5B")         # Mega Man's setup: gravity $40, jump speed $05F4
     dj_install, dj_bne = double_jump()
     kit_install, K = kit()
@@ -120,6 +122,9 @@ def mechanics():
       {"id": "invincible", "label": "Invincible", "kind": "toggle",
        "help": "Enemies and their shots can't take energy. Spikes and pits still can.",
        "patches": [{"offset": touch, "hex": "38E900"}] + [{"offset": h, "hex": "38E900EA"} for h in hits]},
+      {"id": "ammo", "label": "Weapons never run out", "kind": "toggle",
+       "help": "The robot master weapons cost no energy, and neither do Rush Coil, Rush Search and Rush Jet.",
+       "patches": [{"offset": spend, "hex": "E90000"}] + [{"offset": o, "hex": "AD"} for o in rush]},
       {"id": "lives", "label": "Infinite lives", "kind": "toggle", "help": "Losing a life doesn't count down.",
        "patches": [{"offset": lives_dec, "hex": "AD"}]},
       {"id": "startlives", "label": "Lives at the start", "kind": "number", "offset": lives0[0], "also": lives0[1:], "min": 0, "max": 9,
@@ -130,4 +135,4 @@ def presets():
     kit = {"kit_weapons": True, "kit_adaptor": True, "kit_rjet": True, "kit_rsearch": True, "kit_balancer": True, "kit_exit": True,
            "kit_beat": 4, "kit_pshield": True, "kit_hyper": True, "kit_etanks": 4, "kit_wtanks": 4, "kit_stank": 1, "kit_bolts": 999}
     return {"Normal": {}, "Easy": {"startlives": 9, "kit_etanks": 4, "kit_balancer": True}, "Ready to go": kit,
-            "Super Mega Man": {**kit, "invincible": True, "lives": True, "startlives": 9, "airjump": 1, "jump": 125}}
+            "Super Mega Man": {**kit, "invincible": True, "ammo": True, "lives": True, "startlives": 9, "airjump": 1, "jump": 125}}

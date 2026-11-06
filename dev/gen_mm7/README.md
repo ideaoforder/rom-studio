@@ -31,12 +31,12 @@ What's known:
   - **Invincible:** the four `SBC` in Mega Man's damage code become `SBC #0`.
   - **Infinite lives:** `DEC $0B81` becomes `LDA`.
   - **Lives at the start:** the three `LDA #2 / STA $0B81`.
+  - **Weapons never run out:** weapon energy is a word at `$0B82 + 2·n` (high byte = the bar | owned bit, low byte = fractions). Every weapon shot spends through one routine (`LDA $0B82,Y / AND #$7FFF / SEC / SBC cost,X`, file `0x12FDF`); its `SBC` becomes `SBC #0`. Rush Search, Rush Coil and Rush Jet each have their own `STA` ($0B96, $0B9A, $0B98), which become `LDA`.
 
 Not done yet:
 
 - **Boss fights.** The robot masters come from their stage-intro poses (`capture_bosses.py`). A stage counts as beaten when its weapon is owned *and* `$0B7C` is set, so clearing both while a published password loads replays the intro. The fights themselves aren't captured, because rooms lock the camera and flying right doesn't reach them. Bass, Wily and the fortress bosses aren't captured either.
 - **Enemy names.** Enemies are labelled by stage and object type.
 - **Per-weapon colours for Mega Man.** The menu cursor isn't found yet.
-- **Weapon energy.** The code that spends it hasn't been found yet.
 
 Checks: `dev/test_mm7.py` (codec parity, edits → download → Ruby parity → reopen, a forced repack, and booting both builds) and `dev/test_mm7_mech.py`.

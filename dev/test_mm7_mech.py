@@ -43,7 +43,7 @@ def new_game(path):       # title -> GAME START, a few seconds in
         if C.title_menu(s.screen()): break
     s.run(40); s.run(4, "START"); s.run(300); return s.ram
 V = {"normal": {}, "inv": {"invincible": True}, "lives": {"lives": True}, "start": {"startlives": 7}, "jump": {"jump": 150},
-     "double": {"airjump": 1}, "unlimited": {"airjump": 2},
+     "ammo": {"ammo": True}, "double": {"airjump": 1}, "unlimited": {"airjump": 2},
      "kit": {"kit_weapons": True, "kit_adaptor": True, "kit_rjet": True, "kit_balancer": True, "kit_beat": 4, "kit_pshield": True, "kit_hyper": True, "kit_etanks": 4, "kit_bolts": 999}}
 with sync_playwright() as p:
     b = p.chromium.launch(); paths = {}
@@ -69,5 +69,11 @@ check("normal new game: only the buster and Rush Coil", all(not w(k0, k) & 0x80 
 check("starting kit: weapons, Super Adaptor, Rush Jet, Proto Shield, Energy Balancer, Hyper Rocket Buster, Beat + 4 whistles, 4 E-tanks, 999 bolts",
       all(w(k1, k) == 0x9C for k in (1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 14)) and k1[0xBA4] & 0xC0 == 0xC0 and k1[0xBA3] == 0x84 and k1[0xBA0] == 4 and k1[0xBA6] | k1[0xBA7] << 8 == 999, k1[0xB83:0xBA8].hex())
 p0 = C.stage_select(paths["kit"]).ram; check("a password game isn't touched by the kit", p0[0xBA0] == 1 and p0[0xBA6] | p0[0xBA7] << 8 == 640, p0[0xB9F:0xBA8].hex())
+def spend(path, w):  # select weapon w in Freeze Man's stage and shoot (run right, Y fires) for 15 s: energy before, after
+    s = C.stage_select(path); C.enter(s, "Freeze Man"); s.run(60); s.poke(0xB73, w); s.poke(0xBC7, w); e0 = s.ram[0xB83 + 2 * w] & 0x7F
+    for t in range(300): s.run(3, "Y") if t % 6 == 0 else s.run(3, *(["RIGHT", "B"] if t % 30 < 12 else ["RIGHT"]))
+    return e0, s.ram[0xB83 + 2 * w] & 0x7F
+f0, f1, c0, c1 = spend(paths["normal"], 1), spend(paths["ammo"], 1), spend(paths["normal"], 12), spend(paths["ammo"], 12)
+check("weapons never run out: Freeze Cracker and Rush Coil stay full (normal: they drain)", f0[1] < f0[0] and c0[1] < c0[0] and f1 == (28, 28) and c1 == (28, 28), (f0, f1, c0, c1))
 print("errors:", errors or "none"); print(f"{sum(res)}/{len(res)} PASS")
 sys.exit(0 if all(res) and not errors else 1)
