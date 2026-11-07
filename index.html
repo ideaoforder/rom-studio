@@ -98,6 +98,18 @@ a { color: inherit; }
 .card .rom { margin-top: auto; font-family: var(--f-mono); font-size: 11px; color: var(--muted); overflow-wrap: anywhere; }
 .chip { font-family: var(--f-mono); font-size: 10px; line-height: 1.4; padding: 1px 6px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); margin-left: 6px; vertical-align: 2px; }
 
+/* my games: what this browser has saved (the editors' autosaves and NES snapshots) */
+.mine h2 { font-family: var(--f-pixel); font-weight: 400; font-size: 13px; letter-spacing: .06em; margin: 0 0 10px; }
+.mine > p { margin: 0 0 14px; color: var(--muted); font-size: 14px; }
+.keep { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+.save { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 4px 12px; align-items: center;
+  text-align: left; color: inherit; font: inherit; cursor: pointer; transition: transform .15s, border-color .15s, box-shadow .15s; }
+.save:hover { transform: translateY(-2px); border-color: var(--muted); box-shadow: 4px 4px 0 #000; }
+.save svg { grid-row: span 3; width: 58px; height: auto; }
+.save .k { font-family: var(--f-pixel); font-size: 8px; letter-spacing: .08em; color: var(--accent); }
+.save b { font-family: var(--f-pixel); font-weight: 400; font-size: 10px; line-height: 1.6; overflow-wrap: anywhere; }
+.save small { color: var(--muted); font-size: 12.5px; }
+.snaps-title { margin: 18px 0 8px; font-family: var(--f-pixel); font-size: 9px; letter-spacing: .1em; color: var(--accent); }
 footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 14px; display: flex; flex-wrap: wrap; gap: 6px 18px; }
 </style>
 <script src="lib/files.js"></script>
@@ -132,6 +144,14 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
     </div>
   </section>
 
+  <section class="mine" id="mine" hidden>
+    <h2>My games</h2>
+    <p>Saved in this browser. Pick one, then insert its cartridge (the ROM isn't kept here, except for SNES games when there's room).</p>
+    <div class="keep" id="keep"></div>
+    <h3 class="snaps-title" id="snapsTitle" hidden>RECENT SNAPSHOTS</h3>
+    <div class="keep" id="snaps"></div>
+  </section>
+
   <section class="shelf">
     <h2>On the shelf</h2>
     <p>These are the games ROM Studio knows. Each one needs this exact version of the ROM; the fingerprint is under its name.</p>
@@ -150,7 +170,7 @@ footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line)
 <script>
 // ---- the games on the shelf. crc = CRC32 of the ROM without its header (No-Intro); the label art is our own.
 const GAMES = [
-  { id: "smb", sys: "nes", title: "Super Mario Bros.", rom: "Super Mario Bros. (World)", crc: 0xD445F698, art: "hills",
+  { id: "smb", sys: "nes", title: "Super Mario Bros.", rom: "Super Mario Bros. (World)", profile: "Super Mario Bros. (World)", crc: 0xD445F698, art: "hills",
     can: "The player rig, enemies & items, blocks, sounds, music, mechanics" },
   { id: "smb2", sys: "nes", title: "Super Mario Bros. 2", rom: "Super Mario Bros. 2 (USA) (Rev 1)", crc: 0xCA594ACE, art: "dream",
     can: "All four players, enemies, items, bosses, every world's blocks, mechanics" },
@@ -158,9 +178,9 @@ const GAMES = [
     can: "Mega Man & his weapons, Rush, bosses, enemies, blocks, mechanics" },
   { id: "contra", sys: "nes", title: "Contra", rom: "Contra (USA)", crc: 0xF6035030, art: "jungle",
     can: "Bill & Lance, weapons, enemies, bosses, all 8 levels, mechanics" },
-  { id: "cv", sys: "nes", title: "Castlevania", rom: "Castlevania (USA) (Rev 1)", crc: 0xB668C7FC, art: "night",
+  { id: "cv", sys: "nes", title: "Castlevania", rom: "Castlevania (USA) (Rev 1)", profile: "Castlevania (USA)", crc: 0xB668C7FC, art: "night",
     can: "Simon, whip & subweapons, enemies, bosses, every stage, mechanics" },
-  { id: "zelda", sys: "nes", title: "The Legend of Zelda", rom: "Legend of Zelda, The (USA) (Rev 1)", crc: 0xEAF7ED72, art: "map",
+  { id: "zelda", sys: "nes", title: "The Legend of Zelda", rom: "Legend of Zelda, The (USA) (Rev 1)", profile: "The Legend of Zelda (USA) (Rev 1)", crc: 0xEAF7ED72, art: "map",
     can: "Link, enemies, bosses, items, the overworld & dungeons, a starting kit" },
   { id: "smw", sys: "snes", title: "Super Mario World", rom: "Super Mario World (USA)", crc: 0xB19ED489, art: "meadow",
     can: "Mario & Luigi in every pose, Yoshi, enemies, level tiles, colours, mechanics" },
@@ -238,6 +258,40 @@ for (const g of GAMES) {
 }
 $("#ghost").innerHTML = nesCart({ title: " ", art: "blank" });
 
+// ---- my games: the editors' autosaves (keys from nes.html and snes/app.js) and the NES editor's snapshots
+const read = k => { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } };
+const has = k => { try { return localStorage.getItem(k) != null; } catch (e) { return false; } };
+const n = o => Object.keys(o || {}).length;
+const when = iso => new Date(iso).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+function saveCard(g, kind, title, sub, go) {
+  const b = document.createElement("button"); b.type = "button"; b.className = "save";
+  b.innerHTML = `${cartSvg(g)}<span class="k">${esc(kind)}</span><b>${esc(title)}</b><small>${esc(sub)}</small>`; b.onclick = go; return b;
+}
+function askFor(g, label, snapshot) { // ask for this game's cartridge; insert() checks it's the right one
+  want = { game: g, label, snapshot }; say(`Insert your ${g.title} cartridge.`, true); $("#console").scrollIntoView({ behavior: "smooth", block: "center" }); $("#file").click();
+}
+function renderMine() {
+  const keep = [], snaps = [];
+  const nes = read("smb-skin-bench-v1"), ng = nes && GAMES.find(g => g.sys === "nes" && (g.profile || g.rom) === (nes.game || "Super Mario Bros. (World)"));
+  if (ng) {
+    const edits = n(nes.chrEdits) + n(nes.palEdited) + n(nes.mech) + n(nes.sfxEdits) + (nes.musicEdited ? 1 : 0);
+    keep.push(saveCard(ng, "KEEP GOING", nes.projectName || ng.title, edits ? `${ng.title} · ${edits} change${edits === 1 ? "" : "s"}` : ng.title, () => askFor(ng, nes.projectName || ng.title)));
+  }
+  const sn = read("rom-studio-snes-v1"), sg = sn && GAMES.find(g => g.sys === "snes" && g.id === sn.game);
+  if (sg) {
+    const edits = n(sn.tiles) + n(sn.colors) + n(sn.mech), romKept = has("rom-studio-snes-v1-rom");
+    keep.push(saveCard(sg, "KEEP GOING", sn.name || sg.title, `${sg.title} · ${edits} change${edits === 1 ? "" : "s"}${romKept ? "" : " · needs the cartridge"}`,
+      () => romKept ? (location.href = EDITOR.snes) : askFor(sg, sn.name || sg.title)));
+  }
+  for (const x of (read("rom-studio-snapshots") || []).slice(0, 6)) {
+    const g = GAMES.find(q => q.sys === "nes" && (q.profile || q.rom) === x.game); if (!g) continue;
+    snaps.push(saveCard(g, "SNAPSHOT", x.name, `${g.title} · ${when(x.when)}`, () => askFor(g, x.name, x.id)));
+  }
+  $("#keep").replaceChildren(...keep); $("#snaps").replaceChildren(...snaps);
+  $("#snapsTitle").hidden = !snaps.length; $("#mine").hidden = !keep.length && !snaps.length;
+}
+renderMine();
+
 // ---- insert cartridge: read the file (unzip if needed), find the game, hand it to its editor
 const con = $("#console"), msg = $("#msg");
 function say(text, ok) { msg.textContent = text || ""; msg.className = "msg" + (ok ? " ok" : ""); msg.hidden = !text; }
@@ -258,9 +312,10 @@ function identify(bytes) {
   const crc = crc32(body), sys = nes ? "nes" : bytes.length >= 0x40000 && body.length % 0x8000 === 0 ? "snes" : null;
   return { sys, crc, game: GAMES.find(g => g.crc === crc && g.sys === sys) };
 }
+let want = null; // {game, snapshot, label} when a "My games" entry asked for its cartridge
 async function insert(file) {
   if (con.classList.contains("busy")) return;
-  say("");
+  say(""); const asked = want; want = null;
   let got;
   try { got = await readRom(file); } catch (e) { say(`Couldn't read "${file.name}": ${e.message || e}.`); return; }
   if (got.project) { say("That's a ROM Studio project. Open the game's editor first, then use Open project… there."); return; }
@@ -270,8 +325,9 @@ async function insert(file) {
     say(`"${got.name}" is ${what}. (${got.bytes.length.toLocaleString()} bytes, CRC32 ${hex8(crc)}.) Compare it with the fingerprints below.`);
     return;
   }
+  if (asked && asked.game !== game) { say(`That's the ${game.title} cartridge. "${asked.label}" needs ${asked.game.title}.`); return; }
   let name = got.name; if (game.sys === "nes" && !/\.nes$/i.test(name)) name += ".nes";
-  try { await RomHandoff.put(name, got.bytes); }
+  try { await RomHandoff.put(name, got.bytes, asked && asked.snapshot ? { snapshot: asked.snapshot } : null); }
   catch (e) { say(`This browser wouldn't pass the ROM along (${e.message || e}). Open the ${game.sys.toUpperCase()} editor and use Open ROM… there.`); return; }
   // the animation: that game's cartridge drops into the slot, the power light comes on, then the editor opens
   document.querySelectorAll(".card.hit").forEach(c => c.classList.remove("hit")); $("#card-" + game.id).classList.add("hit");
@@ -281,7 +337,7 @@ async function insert(file) {
   setTimeout(() => con.classList.add("on"), reduce ? 0 : 650);
   setTimeout(() => { location.href = EDITOR[game.sys]; }, reduce ? 250 : 1500);
 }
-$("#insert").onclick = () => $("#file").click();
+$("#insert").onclick = () => { want = null; $("#file").click(); };
 $("#file").onchange = e => { const f = e.target.files[0]; if (f) insert(f); e.target.value = ""; };
 let depth = 0;
 addEventListener("dragenter", e => { e.preventDefault(); depth++; con.classList.add("drag"); });
@@ -289,7 +345,7 @@ addEventListener("dragleave", () => { if (--depth <= 0) { depth = 0; con.classLi
 addEventListener("dragover", e => e.preventDefault());
 addEventListener("drop", e => { e.preventDefault(); depth = 0; con.classList.remove("drag"); const f = e.dataTransfer.files[0]; if (f) insert(f); });
 // back from an editor with the browser's back button: reset the console
-addEventListener("pageshow", () => { con.classList.remove("busy", "loading", "on"); say(""); });
+addEventListener("pageshow", () => { con.classList.remove("busy", "loading", "on"); say(""); renderMine(); });
 </script>
 </body>
 </html>

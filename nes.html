@@ -4421,7 +4421,13 @@ function bootSample() {
   requestAnimationFrame(loop);
 })();
 // a ROM inserted on the landing page (index.html) opens here as if it were dropped on the page
-if (window.RomHandoff) RomHandoff.take().then(f => { if (f) handleFiles([f]); });
+// (with `extra.snapshot`, that snapshot is restored first: "My games" on the landing page)
+if (window.RomHandoff) RomHandoff.take().then(f => {
+  if (!f) return;
+  const sn = f.extra && f.extra.snapshot && loadSnaps().find(x => x.id === f.extra.snapshot);
+  if (sn) restoreBackup({ state: { ...sn.state, game: sn.game, projectName: sn.name } });
+  handleFiles([f]);
+});
 </script>
 
 </body>
