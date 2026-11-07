@@ -8,7 +8,7 @@ with sync_playwright() as p:
     ctx.route("https://cdnjs.cloudflare.com/**/js-yaml.min.js", lambda r: r.fulfill(path=JSYAML, content_type="text/javascript"))
     ctx.route("https://fonts.**/**", lambda r: r.abort())
     pg = ctx.new_page(); pg.on("pageerror", lambda e: errors.append(str(e)))
-    pg.goto(f"file://{REPO}/index.html"); pg.wait_for_timeout(600)
+    pg.goto(f"file://{REPO}/nes.html"); pg.wait_for_timeout(600)
     print("scrollWidth:", pg.evaluate("document.documentElement.scrollWidth"), "| doctype:", pg.evaluate("document.compatMode"))
     before = pg.evaluate("JSON.stringify(S.parts.head)")
     bb = pg.locator("#painter").bounding_box(); pg.touchscreen.tap(bb["x"] + 30, bb["y"] + bb["height"] - 30)

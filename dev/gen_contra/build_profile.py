@@ -119,6 +119,6 @@ P={"format":"nes-sprite-profile/1","game":"Contra (USA)","objects_label":"Sprite
 out=os.environ.get("CONTRA_OUT","/tmp/contra_profile.json"); json.dump(P,open(out,"w"),separators=(",",":"))
 print(len(objects),"objects",len(sets),"link sets",len(json.dumps(P))//1024,"KB", free)
 if os.environ.get("WRITE_HTML"):
-    html=os.path.join(os.path.dirname(os.path.abspath(__file__)),"../../index.html"); h=open(html).read()
+    html=os.path.join(os.path.dirname(os.path.abspath(__file__)),"../../nes.html"); h=open(html).read()
     i=h.index("const CONTRA_PROFILE = ")+len("const CONTRA_PROFILE = "); j=h.index(";\nconst BUILTIN_PROFILES",i)
     open(html,"w").write(h[:i]+json.dumps(P,separators=(",",":"))+h[j:])

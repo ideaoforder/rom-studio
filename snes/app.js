@@ -357,5 +357,7 @@ function init() {
     if (saved && r) useRom(unb64(r), saved);
   } catch (e) { /* nothing saved */ }
   render();
+  // a ROM inserted on the landing page (../index.html) opens as if it had been picked here
+  if (window.RomHandoff) RomHandoff.take().then(f => { if (f) openRom(f); });
 }
 init();

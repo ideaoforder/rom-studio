@@ -38,6 +38,6 @@ P={"format":"nes-sprite-profile/1","game":"Super Mario Bros. 2 (USA) (Rev 1)","o
 json.dump(P,open(OUT+"/smb2_profile.json","w"),separators=(",",":"),ensure_ascii=False)
 print(len(P["objects"]), len(json.dumps(P))//1024,"KB", P["rom"]["check"])
 
-html=""+os.path.join(os.path.dirname(os.path.abspath(__file__)),"../../index.html")+""; h=open(html).read()
+html=""+os.path.join(os.path.dirname(os.path.abspath(__file__)),"../../nes.html")+""; h=open(html).read()
 i=h.index("const SMB2_PROFILE = ")+len("const SMB2_PROFILE = "); j=h.index(";\n",i)
 open(html,"w").write(h[:i]+json.dumps(P,separators=(",",":"),ensure_ascii=False)+h[j:])

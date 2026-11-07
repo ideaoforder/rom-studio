@@ -4,7 +4,7 @@ A browser workbench for reskinning NES games. **Super Mario Bros.**: the player,
 
 **Mechanics** (both games): invincibility, jump height, gravity, speed, and more. SMB adds grip (ice physics), flap-to-fly, infinite lives and Bowser's health. Mega Man 3 adds infinite weapon energy and weapon power.
 
-**Open it:** https://ideaoforder.github.io/rom-studio/ (works on iPad, too). SNES games have their own page: https://ideaoforder.github.io/rom-studio/snes/
+**Open it:** https://ideaoforder.github.io/rom-studio/ (works on iPad, too) and insert a cartridge: pick your ROM and the right editor opens. The editors are also at `nes.html` and `snes/`.
 
 Bring your own ROM: open a legally dumped *Super Mario Bros. (World)* or *Mega Man 3 (USA)* `.nes` file; the page picks the game from the ROM. Nothing from the game is included here; all art, sounds and music are read from the ROM you open, and it never leaves your browser.
 

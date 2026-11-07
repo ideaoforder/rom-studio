@@ -1,7 +1,7 @@
 """Rush (Coil, Marine, Jet) objects for MM3_PROFILE, read from your own Mega Man 3 (USA) ROM.
 
     MM3_ROM="/path/to/Mega Man 3 (USA).nes" python3 rush.py              # print the objects
-    MM3_ROM=... WRITE_HTML=1 python3 rush.py                             # replace them in index.html
+    MM3_ROM=... WRITE_HTML=1 python3 rush.py                             # replace them in nes.html
 
 How the game draws Rush (see HANDOFF.md, Mega Man 3):
 - Rush Coil/Marine/Jet are weapons 7/9/11. `init_rush` ($1ED1A6) puts him in object slot 1 with
@@ -104,7 +104,7 @@ if __name__ == "__main__":
     objs = build()
     if not os.environ.get("WRITE_HTML"):
         print(json.dumps(objs, indent=1, ensure_ascii=False)); sys.exit()
-    path = os.path.join(REPO, "index.html"); html = open(path).read()
+    path = os.path.join(REPO, "nes.html"); html = open(path).read()
     head = "const MM3_PROFILE = "; i = html.index(head); j = html.index("\n", i)
     prof = json.loads(html[i + len(head):j].rstrip(";"))
     rest = [o for o in prof["objects"] if o.get("group") != "Rush"]

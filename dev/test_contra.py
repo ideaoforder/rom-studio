@@ -32,7 +32,7 @@ with sync_playwright() as p:
     ctx.route("https://fonts.**/**", lambda r: r.abort())
     pg = ctx.new_page(); pg.on("pageerror", lambda e: errors.append(str(e)))
     pg.add_init_script("try{localStorage.clear()}catch(e){}")
-    pg.goto(f"file://{REPO}/index.html"); pg.wait_for_timeout(600)
+    pg.goto(f"file://{REPO}/nes.html"); pg.wait_for_timeout(600)
     pg.set_input_files("#fRom", ROM); pg.wait_for_timeout(1000)
     print("game:", pg.text_content("#gameName"))
     prof = json.loads(pg.evaluate("JSON.stringify(CONTRA_PROFILE)")); C = prof["chr_ram"]
@@ -76,7 +76,7 @@ with sync_playwright() as p:
         ok &= bytes(buf[ppu:ppu + 16]) == lo + hi
     print("edited tiles decode back through the pointer table:", ok, "| blocks moved to free space:", [f"{m:02x}" for m in moved])
     pg2 = ctx.new_page(); pg2.on("pageerror", lambda e: errors.append(str(e)))
-    pg2.goto(f"file://{REPO}/index.html"); pg2.wait_for_timeout(500)
+    pg2.goto(f"file://{REPO}/nes.html"); pg2.wait_for_timeout(500)
     pg2.set_input_files("#fProj", z1); pg2.wait_for_timeout(1500)
     with pg2.expect_download() as d: pg2.click("#btnSave"); pg2.click("#dlGo")
     z2 = f"{T}/p2.zip"; d.value.save_as(z2)

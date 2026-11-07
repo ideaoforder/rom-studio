@@ -4,7 +4,7 @@ MM3=os.environ.get("MM3_ROM") or sys.exit("Set MM3_ROM"); O=os.path.dirname(os.p
 with sync_playwright() as p:
     b=p.chromium.launch(); pg=b.new_page(viewport={"width":1400,"height":1000}); errs=[]; pg.on("pageerror", lambda e: errs.append(str(e)))
     pg.route("https://fonts.**/**", lambda r: r.abort())
-    pg.goto("file://"+os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+"/index.html"); pg.wait_for_timeout(500)
+    pg.goto("file://"+os.path.dirname(os.path.dirname(os.path.abspath(__file__)))+"/nes.html"); pg.wait_for_timeout(500)
     pg.set_input_files("#fRom", MM3); pg.wait_for_timeout(900)
     pg.click("#tabBlocks"); pg.wait_for_timeout(600)
     names=pg.eval_on_selector_all(".oitem span:not(.dot)","e=>e.map(x=>x.textContent)")

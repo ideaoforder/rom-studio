@@ -125,6 +125,6 @@ if os.environ.get("ZELDA_EXTRA"): P.update(json.load(open(os.environ["ZELDA_EXTR
 out = os.environ.get("ZELDA_OUT", "/tmp/zelda_profile.json"); json.dump(P, open(out, "w"), separators=(",", ":"))
 print(len(json.dumps(P)) // 1024, "KB")
 if os.environ.get("WRITE_HTML"):
-    html = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../index.html"); h = open(html).read()
+    html = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../nes.html"); h = open(html).read()
     i = h.index("const ZELDA_PROFILE = ") + len("const ZELDA_PROFILE = "); j = h.index(";\n", i)
     open(html, "w").write(h[:i] + json.dumps(P, separators=(",", ":")) + h[j:])

@@ -4,12 +4,13 @@ Where this project stands and how to pick it up in an IDE. Written 2026-10-20 at
 
 ## What it is
 
-- `index.html`: the whole app ("SMB Skin Bench"), one self-contained page. Tabs: **Player** (rig-posed body parts → 28 game frames), **Enemies & items**, **Blocks**, **Sounds** (18 SFX), **Music** (12 songs). Bring your own *Super Mario Bros. (World)* ROM (40,976 bytes); nothing from the game is in the repo.
+- `index.html`: the landing page. Cards for each game (cartridges drawn in SVG, no game art) and an "insert cartridge" slot: it unzips if needed, matches the ROM's CRC32 (without the iNES/copier header) against `GAMES`, stores it with `lib/handoff.js` (IndexedDB, same origin) and opens the editor, which takes it on boot.
+- `nes.html`: the whole NES app ("SMB Skin Bench"), one self-contained page. Tabs: **Player** (rig-posed body parts → 28 game frames), **Enemies & items**, **Blocks**, **Sounds** (18 SFX), **Music** (12 songs). Bring your own *Super Mario Bros. (World)* ROM (40,976 bytes); nothing from the game is in the repo.
 - `tools/smb_patcher.rb` + `tools/smb_rig.rb`: Ruby (stdlib only) CLI: `dump` / `pose` / `build` / `parts` / `colors`. `build config.json` rebuilds the exact same ROM as the browser from a downloaded project zip (verified byte-identical in every feature).
 - `tools/sprite_capture.lua`: Mesen 2 script that logs OAM/CHR to `capture.jsonl` (for Mega Man 6, see Next).
 - Hosted on GitHub Pages (`ideaoforder.github.io/rom-studio`) for the kids' iPads. Also published as a private Claude artifact, but **the Claude desktop artifact panel does not persist localStorage**, so autosave doesn't work there. Pages does.
 
-## Architecture (index.html)
+## Architecture (nes.html)
 
 Global state `S`: `rig, parts, palettes, names, rom, profile, objs, chrEdits, spritePals, palEdited, sfxEdits, music, musicEdited, ov{sel, area, variant, clip, slot, slotId, cat}, tab`. `snap()` / `restore()` / `persist()` (localStorage key `smb-skin-bench-v1`), undo/redo stacks of snaps.
 
@@ -251,7 +252,7 @@ export SMB_ROM="/path/to/Super Mario Bros. (World).nes"   # never commit it
 | `test_blocks.py` | metatiles vs ROM, BG palettes/shimmer/sky, Ruby parity, round trip |
 | `test_sounds.py`, `test_scope.py` | SFX model vs the real engine (py65, `sfx_truth.py`), scope trace |
 | `test_music.py` | page 6502 vs py65 (`music_truth.py`), repack lossless, space meter |
-| `test_ipad.py` | the standalone `index.html` at iPad size with touch |
+| `test_ipad.py` | the standalone `nes.html` at iPad size with touch |
 | `test_capture.py` | `tools/sprite_capture.lua` logic (lupa) |
 | `sfx_compare.js`, `music_test.js` | node versions of the model-vs-engine checks (`sfx_model.js`, `music_model.js`) |
 

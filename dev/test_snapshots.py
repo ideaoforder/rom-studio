@@ -8,7 +8,7 @@ state = "() => JSON.stringify([Object.keys(S.chrEdits).length, S.mech, S.palette
 with sync_playwright() as p:
     b = p.chromium.launch(); ctx = b.new_context(accept_downloads=True); ctx.route("https://fonts.**/**", lambda r: r.abort())
     pg = ctx.new_page(); pg.on("pageerror", lambda e: errors.append(str(e)))
-    pg.goto(f"file://{REPO}/index.html"); pg.evaluate("try{localStorage.clear()}catch(e){}"); pg.reload(); pg.wait_for_timeout(500)
+    pg.goto(f"file://{REPO}/nes.html"); pg.evaluate("try{localStorage.clear()}catch(e){}"); pg.reload(); pg.wait_for_timeout(500)
     pg.set_input_files("#fRom", SMB); pg.wait_for_timeout(400)
     pg.evaluate("() => { checkpoint(''); S.names.player1 = 'STEVE'; S.palettes.player1 = ['2A','30','11']; S.mech = {gravity: 25, flap: true}; const o = S.objs[0], f = Object.values(o.frames)[0], q = f.slots.find(Boolean); S.chrEdits[q.off] = tileAt(q.off).map(r => r.map(v => (v + 1) % 4)); fullRefresh(); }")
     edited = pg.evaluate(state)

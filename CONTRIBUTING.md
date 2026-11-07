@@ -11,7 +11,8 @@ ROM Studio supports a game through a **profile**: a JSON description of where th
 ## Where things live
 
 ```
-index.html              NES editor (one page; NES profiles are inline consts, written by dev/gen_<game>/build_profile.py)
+index.html              landing page: the game shelf and the "insert cartridge" slot (add your game to GAMES there)
+nes.html                NES editor (one page; NES profiles are inline consts, written by dev/gen_<game>/build_profile.py)
 snes/index.html         SNES editor: markup
 snes/app.js             SNES editor: UI and state (tiles, colours, mechanics)
 snes/lib/*.js           SNES formats: lz2.js (Nintendo LZ2), clz.js (Capcom LZ), tiles.js (planar 2/3/4/8 bpp), color.js (BGR555), rom.js (LoROM/HiROM, build)

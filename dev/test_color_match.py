@@ -10,7 +10,7 @@ with sync_playwright() as p:
     ctx.route("https://fonts.**/**", lambda r: r.abort())
     pg = ctx.new_page(); pg.on("pageerror", lambda e: errors.append(str(e)))
     pg.add_init_script("try{localStorage.clear()}catch(e){}")
-    pg.goto(f"file://{REPO}/index.html"); pg.wait_for_timeout(600)
+    pg.goto(f"file://{REPO}/nes.html"); pg.wait_for_timeout(600)
     pg.set_input_files("#fRom", ROM); pg.wait_for_timeout(500)
     sel = lambda n: pg.evaluate(f"(()=>{{selectObj(S.objs.findIndex(o=>o.name==={json.dumps(n)}));}})()")
     pals = lambda: pg.evaluate("S.spritePals")

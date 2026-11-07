@@ -25,7 +25,7 @@
       <button class="btn" id="btnRedo" type="button" title="Redo (Ctrl+Shift+Z)" disabled>Redo</button>
       <button class="btn" id="btnStart" type="button" title="Clear every edit for this game (Undo brings it back)" disabled>Start over</button>
       <button class="btn primary" id="btnSave" type="button" disabled>Download</button>
-      <a class="btn" href="../" title="The NES editor">NES games</a>
+      <a class="btn" href="../index.html" title="Every supported game, and the cartridge slot">All games</a>
     </div>
     <input type="file" id="fRom" hidden>
     <input type="file" id="fProj" hidden>
@@ -100,6 +100,7 @@
 <!-- shared helpers, the SNES format layer, then one file per supported game, then the app -->
 <script src="../lib/files.js"></script>
 <script src="../lib/mechanics.js"></script>
+<script src="../lib/handoff.js"></script>
 <script src="lib/lz2.js"></script>
 <script src="lib/clz.js"></script>
 <script src="lib/tiles.js"></script>

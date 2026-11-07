@@ -77,6 +77,6 @@ P = {"format": "nes-sprite-profile/1", "game": "Castlevania (USA)", "objects_lab
 out = os.environ.get("CV_OUT", "/tmp/cv_profile.json"); json.dump(P, open(out, "w"), separators=(",", ":"))
 print(len(objects), "objects", len(sets), "link sets", len(json.dumps(P)) // 1024, "KB")
 if os.environ.get("WRITE_HTML"):
-    html = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../index.html"); h = open(html).read()
+    html = os.path.join(os.path.dirname(os.path.abspath(__file__)), "../../nes.html"); h = open(html).read()
     i = h.index("const CV_PROFILE = ") + len("const CV_PROFILE = "); j = h.index(";\nconst BUILTIN_PROFILES", i)
     open(html, "w").write(h[:i] + json.dumps(P, separators=(",", ":")) + h[j:])
